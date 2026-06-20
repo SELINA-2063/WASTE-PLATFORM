@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Private Chat</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="private-chat">
+
+    <div class="chat-info">
+      <h3>💬 Private Chat</h3>
+      <p id="roomInfo"></p>
+    </div>
+
+    <div id="chatBox" class="chat-box"></div>
+
+    <div class="chat-input">
+      <input id="msgInput" type="text" placeholder="Type message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- SOCKET.IO -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+const socket = io("http://localhost:5000");
+
+// 🔥 ROOM ID (buyer + seller + waste)
+const roomId = "waste_101_buyer5_seller2";
+
+document.getElementById("roomInfo").innerText = roomId;
+
+// JOIN ROOM
+socket.emit("join_room", roomId);
+
+// RECEIVE MESSAGE
+socket.on("receive_message", (data) => {
+  const box = document.getElementById("chatBox");
+
+  const msg = document.createElement("div");
+  msg.classList.add("msg");
+
+  msg.classList.add(data.sender === "buyer" ? "user" : "other");
+
+  msg.innerText = data.message;
+
+  box.appendChild(msg);
+});
+
+// SEND MESSAGE
+function sendMessage() {
+  const input = document.getElementById("msgInput");
+
+  socket.emit("send_message", {
+    roomId: roomId,
+    message: input.value,
+    sender: "buyer"
+  });
+
+  input.value = "";
+}
+</script>
+
+</body>
+</html>

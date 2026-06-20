@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Waste Listing - W2REP</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+
+<body>
+
+<!-- NOTIFICATION -->
+<div id="notif" style="
+  position:fixed; top:20px; right:20px;
+  padding:14px 22px; border-radius:8px;
+  font-weight:600; font-size:15px;
+  color:#fff; z-index:9999;
+  display:none;
+"></div>
+
+<!-- REQUEST MODAL -->
+<div id="requestModal" style="
+  display:none;
+  position:fixed; top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+  z-index:1000;
+  justify-content:center;
+  align-items:center;
+">
+  <div style="
+    background:#fff;
+    padding:30px;
+    border-radius:12px;
+    width:400px;
+    max-width:90%;
+  ">
+    <h3 style="margin-bottom:20px; color:#2e7d32;">📦 Send Request</h3>
+
+    <label style="display:block; margin-bottom:5px; font-weight:600;">Quantity</label>
+    <input id="modalQuantity" type="number" placeholder="Enter quantity" style="
+      width:100%; padding:10px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      margin-bottom:15px;
+      box-sizing:border-box;
+    "/>
+
+    <label style="display:block; margin-bottom:5px; font-weight:600;">Proposed Price (per unit) ৳</label>
+    <input id="modalPrice" type="number" placeholder="Enter your proposed price" style="
+      width:100%; padding:10px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      margin-bottom:15px;
+      box-sizing:border-box;
+    "/>
+
+    <label style="display:block; margin-bottom:5px; font-weight:600;">Message (optional)</label>
+    <textarea id="modalMessage" placeholder="Any message for seller?" style="
+      width:100%; padding:10px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      margin-bottom:20px;
+      box-sizing:border-box;
+      resize:none; height:80px;
+    "></textarea>
+
+    <div style="display:flex; gap:10px;">
+      <button onclick="submitRequest()" style="
+        flex:1; padding:12px;
+        background:#2e7d32; color:#fff;
+        border:none; border-radius:8px;
+        font-weight:600; cursor:pointer;
+        font-size:15px;
+      ">✔ Send Request</button>
+      <button onclick="closeModal()" style="
+        flex:1; padding:12px;
+        background:#ccc; color:#333;
+        border:none; border-radius:8px;
+        font-weight:600; cursor:pointer;
+        font-size:15px;
+      ">✖ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>Waste Listings</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a class="active" href="waste-listing.html">Waste Listing</a>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <section class="hero">
+
+    <div class="waste-card">
+
+      <div class="waste-header">
+        <h2>🌿 Available Waste Items</h2>
+        <p>Browse all seller posted recyclable materials</p>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="filter-bar">
+        <input id="wasteKeyword" type="text" placeholder="Search waste..." />
+        <select id="wasteTypeFilter">
+          <option>All Types</option>
+          <option>Plastic</option>
+          <option>Paper</option>
+          <option>Metal</option>
+        </select>
+        <button id="filterBtn" class="btn">Filter</button>
+      </div>
+
+      <!-- TABLE -->
+      <table class="waste-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Quantity</th>
+            <th>Location</th>
+            <th>Seller</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="wasteTableBody">
+          <tr>
+            <td colspan="6" class="empty-state">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+<script>
+
+let selectedWasteId = null;
+
+/* NOTIFICATION */
+function showNotif(msg, color) {
+  const notif = document.getElementById("notif");
+  notif.textContent = msg;
+  notif.style.background = color;
+  notif.style.display = "block";
+  setTimeout(() => { notif.style.display = "none"; }, 3000);
+}
+
+/* PAGE LOAD */
+document.addEventListener("DOMContentLoaded", () => {
+  loadWasteListing();
+  document.getElementById("filterBtn").addEventListener("click", () => {
+    loadWasteListing();
+  });
+});
+
+/* LOAD WASTE LIST */
+async function loadWasteListing() {
+  const keyword = document.getElementById("wasteKeyword").value.trim();
+  const type = document.getElementById("wasteTypeFilter").value;
+
+  const params = new URLSearchParams();
+  if (keyword) params.append("q", keyword);
+  if (type && type !== "All Types") params.append("type", type);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/waste/search?${params.toString()}`);
+    const data = await res.json();
+    const tbody = document.getElementById("wasteTableBody");
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No waste found</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(w => `
+      <tr>
+        <td>${w.name}</td>
+        <td>${w.type}</td>
+        <td>${w.quantity}</td>
+        <td>${w.location || '-'}</td>
+        <td>${w.seller_name}</td>
+        <td>
+          <button class="btn" onclick="sendRequest(${w.id})">Request</button>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    console.log("Waste listing error:", err);
+  }
+}
+
+/* REQUEST BUTTON CLICK */
+function sendRequest(wasteId) {
+  const user = getCurrentUser();
+
+  if (!user) {
+    showNotif("⚠️ Request korar jonno login koro!", "orange");
+    setTimeout(() => window.location.href = "login.html", 2000);
+    return;
+  }
+
+  if (user.role !== "buyer") {
+    showNotif("🚫 Only buyer can send request", "red");
+    return;
+  }
+
+  selectedWasteId = wasteId;
+  document.getElementById("modalQuantity").value = "";
+  document.getElementById("modalPrice").value = "";
+  document.getElementById("modalMessage").value = "";
+  document.getElementById("requestModal").style.display = "flex";
+}
+
+/* MODAL CLOSE */
+function closeModal() {
+  document.getElementById("requestModal").style.display = "none";
+  selectedWasteId = null;
+}
+
+/* SUBMIT REQUEST */
+async function submitRequest() {
+  const user = getCurrentUser();
+  const quantity = document.getElementById("modalQuantity").value.trim();
+  const proposed_price = document.getElementById("modalPrice").value.trim();
+  const message = document.getElementById("modalMessage").value.trim();
+
+  if (!quantity) {
+    showNotif("⚠️ Quantity দাও!", "orange");
+    return;
+  }
+
+  if (!proposed_price) {
+    showNotif("⚠️ Proposed price দাও!", "orange");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/requests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        waste_id: selectedWasteId,
+        buyer_id: user.id,
+        quantity,
+        proposed_price,
+        message
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      closeModal();
+      showNotif("✅ Request sent successfully!", "green");
+    } else {
+      showNotif("❌ " + data.message, "red");
+    }
+
+  } catch (err) {
+    console.log("Send request error:", err);
+    showNotif("❌ Server error!", "red");
+  }
+}
+
+</script>
+
+</body>
+</html>

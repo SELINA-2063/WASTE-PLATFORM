@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Request Details - W2REP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- NOTIFICATION -->
+<div id="notif" style="
+  position:fixed; top:20px; right:20px;
+  padding:14px 22px; border-radius:8px;
+  font-weight:600; font-size:15px;
+  color:#fff; z-index:9999;
+  display:none;
+"></div>
+
+<div class="container">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">📦</div>
+      <h1>Buyer Requests</h1>
+    </div>
+    <nav class="nav">
+      <a href="seller-dashboard.html">Dashboard</a>
+      <a href="seller-my-posts.html">My Posts</a>
+      <a href="seller-post-waste.html">Post Waste</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <!-- CONTENT -->
+  <section class="hero">
+    <div id="requestContainer"></div>
+  </section>
+</div>
+
+<script src="app.js"></script>
+<script>
+
+/* NOTIFICATION */
+function showNotif(msg, color) {
+  const notif = document.getElementById("notif");
+  notif.textContent = msg;
+  notif.style.background = color;
+  notif.style.display = "block";
+  setTimeout(() => { notif.style.display = "none"; }, 3000);
+}
+
+/* LOAD REQUESTS */
+async function loadRequests() {
+  const user = getCurrentUser();
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/requests/${user.id}`);
+    const data = await res.json();
+    const container = document.getElementById("requestContainer");
+
+    if (!data || data.length === 0) {
+      container.innerHTML = "<h3 style='text-align:center;'>No requests found</h3>";
+      return;
+    }
+
+    container.innerHTML = data.map(req => `
+      <div class="request-card">
+        <div class="request-header">
+          <h2>📨 Buyer Request</h2>
+          <span class="status ${req.status}">
+            ${req.status || 'pending'}
+          </span>
+        </div>
+        <div class="request-body">
+          <div class="info-row"><b>Buyer:</b> ${req.buyer_name}</div>
+          <div class="info-row"><b>Waste:</b> ${req.waste_name} (${req.waste_type})</div>
+          <div class="info-row"><b>Quantity:</b> ${req.quantity}</div>
+          <div class="info-row" style="
+            background:#e8f5e9;
+            padding:10px 14px;
+            border-radius:8px;
+            border-left:4px solid #2e7d32;
+            margin:10px 0;
+          ">
+            <b>💰 Buyer Proposed Price:</b>
+            <span style="font-size:18px; color:#2e7d32; font-weight:700; margin-left:8px;">
+              ৳ ${req.proposed_price ? Number(req.proposed_price).toLocaleString() : 'Not specified'}
+            </span>
+            ${req.proposed_price && req.quantity ? `
+              <span style="color:#666; font-size:13px; margin-left:8px;">
+                (Total: ৳ ${(Number(req.proposed_price) * Number(req.quantity)).toLocaleString()})
+              </span>
+            ` : ''}
+          </div>
+          <div class="message-box">
+            <b>Message:</b>
+            <p>${req.message || 'No message'}</p>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="accept" onclick="updateRequest(${req.id}, 'accepted')">
+            ✔ Accept
+          </button>
+          <button class="reject" onclick="updateRequest(${req.id}, 'rejected')">
+            ✖ Reject
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.log("Request load error:", err);
+  }
+}
+
+/* UPDATE STATUS */
+async function updateRequest(id, status) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/requests/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+
+    if (status === 'accepted') {
+      showNotif("✅ Request accepted!", "green");
+    } else {
+      showNotif("❌ Request rejected!", "red");
+    }
+
+    setTimeout(() => loadRequests(), 1000);
+
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+/* INIT */
+document.addEventListener("DOMContentLoaded", loadRequests);
+</script>
+</body>
+</html>

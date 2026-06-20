@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      
+      <!-- HEADER -->
+      <header class="header">
+        <div class="top-title">
+          <div class="logo">♻️</div>
+          <h1>Waste to Resource Exchange Platform</h1>
+        </div>
+        
+        <!-- NAV -->
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="register.html">Register</a>
+          <a class="active" href="login.html">Login</a>
+          <a href="waste-listing.html">Waste Listing</a>
+          <a href="search.html">Search Waste</a>
+          <a href="buyer-dashboard.html">Buyer Dashboard</a>
+          <a href="seller-dashboard.html">Seller Dashboard</a>
+        </nav>
+      </header>
+      
+      <!-- HERO / FORM SECTION -->
+      <section class="hero">
+        <div class="hero-card form-wrap">
+          <h2 class="title">Login to Your Account</h2>
+          <p class="subtitle">Enter your registered email and password to access your dashboard</p>
+          
+          <form id="loginForm" class="form-grid" autocomplete="off">
+            <div class="form-group">
+              <label>Email Address</label>
+              <input id="loginEmail" type="email" placeholder="Enter your email address" required />
+            </div>
+
+            <div class="form-group">
+              <label>Password</label>
+              <input id="loginPassword" type="password" placeholder="Enter password" autocomplete="current-password" required />
+            </div>
+
+            <button type="submit" class="btn">Login</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="footer">
+        2026 Waste to Resource. All rights reserved.
+      </footer>
+      
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Buyer Profile - W2REP</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+
+<body>
+
+<div class="container">
+
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">👤</div>
+      <h1>Buyer Profile</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="buyer-dashboard.html">Dashboard</a>
+      <a href="search.html">Search Waste</a>
+      <a href="my-requests.html">My Requests</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+
+    <div class="hero-card">
+
+      <h2>👤 Profile Info</h2>
+
+      <p><b>Name:</b> <span id="p_name">Loading...</span></p>
+      <p><b>Email:</b> <span id="p_email">-</span></p>
+      <p><b>Phone:</b> <span id="p_phone">-</span></p>
+      <p><b>Location:</b> <span id="p_location">-</span></p>
+      <p><b>Role:</b> <span id="p_role">Buyer</span></p>
+
+      <div class="profile-stats">
+        <div class="stat">
+          <h3 id="p_requests">0</h3>
+          <p>Requests</p>
+        </div>
+        <div class="stat">
+          <h3 id="p_active">0</h3>
+          <p>Active Orders</p>
+        </div>
+        <div class="stat">
+          <h3 id="p_completed">0</h3>
+          <p>Completed</p>
+        </div>
+      </div>
+
+      <!--<button class="btn" onclick="alert('Edit feature coming soon')">
+        Edit Profile
+      </button>-->
+
+      <br><br>
+
+      <a href="buyer-dashboard.html" class="btn">Back</a>
+
+    </div>
+
+  </section>
+
+</div>
+
+<!-- APP JS -->
+<script src="app.js"></script>
+
+<!-- PROFILE SCRIPT -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const user = getCurrentUser();
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  if (user.role !== "buyer") {
+    alert("Buyer account die login koro!");
+    window.location.href = "login.html";
+    return;
+  }
+
+  loadProfile(user.id);
+});
+
+async function loadProfile(id) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/buyer/profile/${id}`);
+    const buyer = await res.json();
+
+    document.getElementById("p_name").innerText = buyer.full_name;
+    document.getElementById("p_email").innerText = buyer.email;
+    document.getElementById("p_phone").innerText = buyer.phone || "-";
+    document.getElementById("p_location").innerText = buyer.address || "-";
+    document.getElementById("p_role").innerText = buyer.role;
+
+  } catch (err) {
+    console.log("Profile info error:", err);
+  }
+
+  try {
+    const statsRes = await fetch(`${API_BASE_URL}/buyer/dashboard/${id}`);
+    const data = await statsRes.json();
+
+    document.getElementById("p_requests").innerText = data.totalRequests || 0;
+    document.getElementById("p_active").innerText = data.activeOrders || 0;
+    document.getElementById("p_completed").innerText = data.completedOrders || 0;
+
+  } catch (err) {
+    console.log("Profile stats error:", err);
+  }
+}
+</script>
+
+</body>
+</html>

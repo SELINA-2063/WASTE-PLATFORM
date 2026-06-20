@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Requests - W2REP</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>My Requests</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="search.html">Search</a>
+      <a href="waste-listing.html">Waste Listing</a>
+      <a class="active" href="my-request.html">My Requests</a>
+      <a href="buyer-dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <section class="hero">
+
+    <div class="premium-card">
+
+      <!-- CARD HEADER -->
+      <div class="card-header">
+        <div>
+          <h2>📦 Request History</h2>
+          <p>Track all your waste exchange requests in one place</p>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <table class="premium-table">
+
+        <thead>
+          <tr>
+            <th>Waste</th>
+            <th>Quantity</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+
+        <tbody id="requestsTableBody">
+          <tr>
+            <td colspan="5" class="empty-state">
+              No requests yet
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+<script src="app.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const user = getCurrentUser();
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  if (user.role !== "buyer") {
+    alert("Buyer account die login koro!");
+    window.location.href = "login.html";
+    return;
+  }
+
+  loadMyRequests(user.id);
+});
+
+async function loadMyRequests(buyerId) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/requests/buyer/${buyerId}`);
+    const data = await res.json();
+
+    const tbody = document.getElementById("requestsTableBody");
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No requests yet</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(r => {
+      const date = new Date(r.created_at).toLocaleDateString();
+      return `
+        <tr>
+          <td>${r.waste_name}</td>
+          <td>${r.quantity}</td>
+          <td>${r.location || '-'}</td>
+          <td><span class="status ${r.status}">${r.status}</span></td>
+          <td>${date}</td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    console.log("My requests error:", err);
+  }
+}
+</script>
+
+</body>
+</html>

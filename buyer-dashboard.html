@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Buyer Dashboard - W2REP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>Buyer Dashboard</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="search.html">Search Waste</a>
+      <a class="active" href="buyer-dashboard.html">Dashboard</a>
+      <a href="my-request.html">My Requests</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+
+    <div class="dashboard-wrapper">
+
+      <!-- WELCOME CARD -->
+      <div class="welcome-card">
+        <div class="welcome-text">
+          <h2>Welcome Back, <span id="buyerName">Buyer</span> 👋</h2>
+          <p>Explore waste listings, send requests, and track your recycling activity.</p>
+        </div>
+
+        <div class="stats">
+          <div class="stat-box">
+            <h3 id="totalRequests">0</h3>
+            <p>Requests</p>
+          </div>
+          <div class="stat-box">
+            <h3 id="activeOrders">0</h3>
+            <p>Active Orders</p>
+          </div>
+          <div class="stat-box">
+            <h3 id="completedOrders">0</h3>
+            <p>Completed</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION CARDS -->
+      <div class="dashboard-grid">
+
+        <!-- SEARCH -->
+        <div class="dash-card premium">
+          <div class="icon">🔍</div>
+          <h3>Search Waste</h3>
+          <p>Find recyclable waste near you instantly</p>
+          <a href="search.html" class="btn">Explore</a>
+        </div>
+
+        <!-- REQUESTS -->
+        <div class="dash-card premium">
+          <div class="icon">📦</div>
+          <h3>My Requests</h3>
+          <p>Track all your purchase requests</p>
+          <a href="my-request.html" class="btn">View</a>
+        </div>
+
+        <!-- QUICK MATCH (FIXED) 
+        <div class="dash-card premium">
+          <div class="icon">⚡</div>
+          <h3>Quick Match</h3>
+          <p>Get best waste offers automatically</p>
+          <a href="quick-match.html" class="btn">Try</a>
+        </div>
+        -->
+
+        <!-- PROFILE (FIXED) -->
+        <div class="dash-card premium">
+          <div class="icon">👤</div>
+          <h3>Profile</h3>
+          <p>Update your buyer profile settings</p>
+          <a href="buyer-profile.html" class="btn">See</a>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    2026 Waste to Resource Exchange Platform. All rights reserved.
+  </footer>
+
+</div>
+
+<!-- APP JS -->
+<script src="app.js"></script>
+
+<!-- 🔥 DASHBOARD SCRIPT -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const user = getCurrentUser();
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  // ROLE CHECK
+  if (user.role !== "buyer") {
+    alert("Not a buyer account!");
+    window.location.href = "login.html";
+    return;
+  }
+
+  // NAME SHOW
+  document.getElementById("buyerName").textContent = user.full_name;
+
+  // LOAD STATS
+  fetch(`${API_BASE_URL}/buyer/dashboard/${user.id}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("totalRequests").textContent = data.totalRequests || 0;
+      document.getElementById("activeOrders").textContent = data.activeOrders || 0;
+      document.getElementById("completedOrders").textContent = data.completedOrders || 0;
+    })
+    .catch(err => console.log("Buyer dashboard error:", err));
+});
+</script>
+
+</body>
+</html>

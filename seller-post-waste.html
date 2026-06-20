@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Post Waste - W2REP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>Post Waste</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="seller-dashboard.html">Dashboard</a>
+      <a class="active" href="seller-post-waste.html">Post Waste</a>
+      <a href="seller-my-posts.html">My Posts</a>
+      <a href="login.html">Logout</a>
+    </nav>
+  </header>
+
+  <!-- FORM SECTION -->
+  <section class="hero">
+
+    <div class="form-card premium-form">
+
+      <h2>📦 Add New Waste Item</h2>
+      <p>Fill up the details to list your waste for buyers</p>
+
+      <form id="sellerPostForm">
+
+        <div class="form-group">
+          <label>Waste Name</label>
+          <input id="postName" type="text" placeholder="e.g. Plastic Bottle" required />
+        </div>
+
+        <div class="form-grid-2">
+
+          <div class="form-group">
+            <label>Type</label>
+            <input id="postType" type="text" placeholder="Plastic / Paper / Metal" required />
+          </div>
+
+          <div class="form-group">
+            <label>Quantity (kg)</label>
+            <input id="postQuantity" type="number" min="1" placeholder="100" required />
+          </div>
+
+        </div>
+
+        <div class="form-group">
+          <label>Location</label>
+          <input id="postLocation" type="text" placeholder="Dhaka" required />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="postDescription" rows="4" placeholder="Write short details..."></textarea>
+        </div>
+
+        <button type="submit" class="btn">🚀 Post Waste</button>
+
+      </form>
+
+      <!-- MESSAGE -->
+      <p id="msg" style="margin-top:10px;font-weight:bold;"></p>
+
+    </div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    2026 Waste to Resource Exchange Platform
+  </footer>
+
+</div>
+
+<!-- JS -->
+<script src="app.js"></script>
+<script>
+document.getElementById("sellerPostForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const msg = document.getElementById("msg");
+
+  const user = JSON.parse(localStorage.getItem("currentUser"));
+
+  if (!user) {
+    msg.style.color = "red";
+    msg.innerText = "❌ Please login first!";
+    return;
+  }
+
+  const data = {
+    name: document.getElementById("postName").value,
+    type: document.getElementById("postType").value,
+    quantity: Number(document.getElementById("postQuantity").value),
+    location: document.getElementById("postLocation").value,
+    description: document.getElementById("postDescription").value,
+    seller_id: user.id
+  };
+
+  try {
+    const res = await fetch("http://localhost:5000/api/waste/post", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const text = await res.text();
+
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      console.log("SERVER RESPONSE NOT JSON:", text);
+      msg.style.color = "red";
+      msg.innerText = "❌ Server error (invalid response)";
+      return;
+    }
+
+    if (res.ok) {
+      msg.style.color = "green";
+      msg.innerText = "✅ Waste posted successfully! Redirecting...";
+
+      setTimeout(() => {
+        window.location.href = "seller-my-posts.html";
+      }, 1200);
+
+    } else {
+      msg.style.color = "red";
+      msg.innerText = result.message || "❌ Post failed!";
+    }
+
+  } catch (err) {
+    console.log(err);
+    msg.style.color = "red";
+    msg.innerText = "❌ Backend not reachable (check server)";
+  }
+});
+</script>
+
+</body>
+</html>

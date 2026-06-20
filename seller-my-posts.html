@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Posts - W2REP</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>My Posted Waste</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="seller-dashboard.html">Dashboard</a>
+      <a href="seller-post-waste.html">Post Waste</a>
+      <a class="active" href="seller-my-posts.html">My Posts</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <section class="hero">
+
+    <div class="premium-card">
+
+      <div class="card-header">
+        <div>
+          <h2>📋 My Listings</h2>
+          <p>All waste items you have posted</p>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <table class="premium-table">
+
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Quantity</th>
+            <th>Location</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+
+        <tbody id="sellerPostsBody">
+          <tr>
+            <td colspan="5" style="text-align:center;color:gray;padding:20px;">
+              Loading posts...
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+</div>
+
+<!-- APP JS -->
+<script src="app.js"></script>
+
+<!-- MY POSTS SCRIPT -->
+<script>
+console.log("MY POSTS PAGE LOADED");
+
+function getCurrentUser() {
+  return JSON.parse(localStorage.getItem("currentUser") || "null");
+}
+
+async function loadMyPosts() {
+  const user = getCurrentUser();
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:5000/api/waste/my/${user.id}`);
+    const data = await res.json();
+
+    const tbody = document.getElementById("sellerPostsBody");
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center;color:gray;">
+            No posts found
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = data.map(post => `
+      <tr>
+        <td>${post.name}</td>
+        <td>${post.type}</td>
+        <td>${post.quantity}</td>
+        <td>${post.location || '-'}</td>
+        <td>${post.description || '-'}</td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    console.log("My Posts Error:", err);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", loadMyPosts);
+</script>
+
+</body>
+</html>

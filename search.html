@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Search Waste - W2REP</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>Search Waste</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a class="active" href="search.html">Search</a>
+      <a href="waste-listing.html">Waste Listing</a>
+      <a href="buyer-dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+
+  <!-- MAIN -->
+  <section class="hero">
+
+    <div class="waste-card">
+
+      <!-- TITLE -->
+      <div class="waste-header">
+        <h2>🔍 Find Waste</h2>
+        <p>Search recyclable materials by type and location</p>
+      </div>
+
+      <!-- SEARCH FORM -->
+      <form id="searchForm" class="filter-bar">
+
+        <input 
+          id="searchType"
+          type="text" 
+          placeholder="Type (Plastic, Paper, Metal...)"
+        />
+
+        <input 
+          id="searchLocation"
+          type="text" 
+          placeholder="Location (Dhaka, Khulna...)"
+        />
+
+        <button class="btn" type="submit">Search</button>
+
+      </form>
+
+      <!-- TABLE -->
+      <table class="waste-table">
+
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Quantity</th>
+            <th>Location</th>
+            <th>Seller</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody id="searchTableBody">
+          <tr>
+            <td colspan="6" class="empty-state">
+              Search to see results
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+<script src="app.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const user = getCurrentUser();
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  if (user.role !== "buyer") {
+    alert("Buyer account die login koro!");
+    window.location.href = "login.html";
+    return;
+  }
+
+  document.getElementById("searchForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    searchWaste();
+  });
+});
+
+/* =========================
+SEARCH WASTE
+========================= */
+async function searchWaste() {
+  const type = document.getElementById("searchType").value.trim();
+  const location = document.getElementById("searchLocation").value.trim();
+
+  const params = new URLSearchParams();
+  if (type) params.append("type", type);
+  if (location) params.append("location", location);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/waste/search?${params.toString()}`);
+    const data = await res.json();
+
+    const tbody = document.getElementById("searchTableBody");
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No waste found</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(w => `
+      <tr>
+        <td>${w.name}</td>
+        <td>${w.type}</td>
+        <td>${w.quantity}</td>
+        <td>${w.location || '-'}</td>
+        <td>${w.seller_name}</td>
+        <td>
+          <button class="btn" onclick="sendRequest(${w.id})">Request</button>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    console.log("Search error:", err);
+  }
+}
+
+/* =========================
+SEND REQUEST
+========================= */
+async function sendRequest(wasteId) {
+  const user = getCurrentUser();
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  const quantity = prompt("Koto quantity lagbe?");
+  if (!quantity) return;
+
+  const message = prompt("Seller ke kichu bolte chao? (optional)") || "";
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/requests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        waste_id: wasteId,
+        buyer_id: user.id,
+        quantity,
+        message
+      })
+    });
+
+    const data = await res.json();
+    alert(data.message);
+
+  } catch (err) {
+    console.log("Send request error:", err);
+  }
+}
+</script>
+
+</body>
+</html>

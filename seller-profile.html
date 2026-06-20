@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Seller Profile - W2REP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">👤</div>
+      <h1>Seller Profile</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="seller-dashboard.html">Dashboard</a>
+      <a href="seller-post-waste.html">Post Waste</a>
+      <a href="seller-my-posts.html">My Posts</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <!-- PROFILE SECTION -->
+  <section class="hero">
+
+    <div class="profile-card">
+
+      <!-- HEADER -->
+      <div class="profile-header">
+        <div class="avatar">♻️</div>
+
+        <div>
+          <h2 id="p_name">Loading...</h2>
+          <p id="p_role">Seller Account</p>
+        </div>
+      </div>
+
+      <!-- INFO -->
+      <div class="profile-info">
+
+        <div class="info-item">
+          <span>Name:</span>
+          <p id="p_name2">-</p>
+        </div>
+
+        <div class="info-item">
+          <span>Email:</span>
+          <p id="p_email">-</p>
+        </div>
+
+        <div class="info-item">
+          <span>Phone:</span>
+          <p id="p_phone">-</p>
+        </div>
+
+        <div class="info-item">
+          <span>Location:</span>
+          <p id="p_location">-</p>
+        </div>
+
+        <div class="info-item">
+          <span>Role:</span>
+          <p id="p_role2">-</p>
+        </div>
+
+      </div>
+
+      <!-- STATS -->
+      <div class="profile-stats">
+
+        <div class="stat">
+          <h3 id="p_posts">0</h3>
+          <p>Posts</p>
+        </div>
+
+        <div class="stat">
+          <h3 id="p_requests">0</h3>
+          <p>Requests</p>
+        </div>
+
+        <div class="stat">
+          <h3 id="p_deals">0</h3>
+          <p>Deals</p>
+        </div>
+
+      </div>
+
+      <!-- BUTTON -->
+      <!---<button class="btn">Edit Profile</button>-->
+
+    </div>
+
+  </section>
+
+</div>
+
+<!-- APP JS -->
+<script src="app.js"></script>
+
+<!-- PROFILE SCRIPT -->
+
+<script>
+async function loadProfile() {
+  const user = getCurrentUser();   // app.js থেকে আসছে
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  try {
+    // 🔥 DATABASE থেকে ফ্রেশ SELLER INFO
+    const res = await fetch(`${API_BASE_URL}/seller/profile/${user.id}`);
+    const seller = await res.json();
+
+    document.getElementById("p_name").innerText = seller.full_name;
+    document.getElementById("p_name2").innerText = seller.full_name;
+    document.getElementById("p_email").innerText = seller.email;
+    document.getElementById("p_role").innerText = seller.role;
+    document.getElementById("p_role2").innerText = seller.role;
+    document.getElementById("p_phone").innerText = seller.phone || "-";
+    document.getElementById("p_location").innerText = seller.address || "-";
+
+  } catch (err) {
+    console.log("Profile info error:", err);
+  }
+
+  try {
+    // DASHBOARD STATS (আগের মতই)
+    const statsRes = await fetch(`${API_BASE_URL}/seller/dashboard/${user.id}`);
+    const data = await statsRes.json();
+
+    document.getElementById("p_posts").innerText = data.totalPosts || 0;
+    document.getElementById("p_requests").innerText = data.totalRequests || 0;
+    document.getElementById("p_deals").innerText = 0; // future feature
+
+  } catch (err) {
+    console.log("Profile stats error:", err);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", loadProfile);
+</script>
+
+
+</body>
+</html>

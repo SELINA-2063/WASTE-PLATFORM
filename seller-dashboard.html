@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Seller Dashboard - W2REP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>Seller Dashboard</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a href="seller-post-waste.html">Post Waste</a>
+      <a class="active" href="seller-dashboard.html">Dashboard</a>
+      <a href="seller-my-posts.html">My Posts</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+
+    <div class="dashboard-wrapper">
+
+      <div class="welcome-card seller-gradient">
+
+        <div class="welcome-text">
+          <h2>Seller Control Panel ⚡</h2>
+
+          <!-- 🔥 SELLER NAME SHOW -->
+          <h3 id="sellerName">Welcome Seller</h3>
+
+          <p>Manage your waste listings, track buyer requests and grow your sales.</p>
+        </div>
+
+        <div class="stats">
+          <div class="stat-box">
+            <h3 id="totalPosts">0</h3>
+            <p>Posts</p>
+          </div>
+
+          <div class="stat-box">
+            <h3 id="pendingRequests">0</h3>
+            <p>Pending Requests</p>
+          </div>
+
+          <div class="stat-box">
+            <h3 id="completedDeals">0</h3>
+            <p>Completed Deals</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="dashboard-grid">
+
+        <div class="dash-card premium">
+          <div class="icon">➕</div>
+          <h3>Post Waste</h3>
+          <p>Add new recyclable waste items</p>
+          <a href="seller-post-waste.html" class="btn">Post</a>
+        </div>
+
+        <div class="dash-card premium">
+          <div class="icon">📋</div>
+          <h3>My Posts</h3>
+          <p>Manage and edit your listings</p>
+          <a href="seller-my-posts.html" class="btn">View</a>
+        </div>
+
+        <div class="dash-card premium">
+          <div class="icon">📨</div>
+          <h3>Buyer Requests</h3>
+          <p>Accept or reject incoming requests</p>
+          <a href="request-details.html" class="btn">Open</a>
+        </div>
+
+        <div class="dash-card premium">
+          <div class="icon">📊</div>
+          <h3>Profile</h3>
+          <p>See your profile</p>
+          <a href="seller-profile.html" class="btn">View</a>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <footer class="footer">
+    2026 Waste to Resource Exchange Platform. All rights reserved.
+  </footer>
+
+</div>
+
+<!-- APP JS -->
+<script src="app.js"></script>
+
+<!-- 🔥 DASHBOARD SCRIPT -->
+<script>
+
+function getCurrentUser() {
+  return JSON.parse(localStorage.getItem("currentUser") || "null");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const user = getCurrentUser();
+
+  console.log("USER DEBUG:", user);
+
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  // 🔥 NAME SHOW
+  const nameEl = document.getElementById("sellerName");
+
+  if (nameEl) {
+    nameEl.textContent = `Welcome, ${user.full_name} 👋`;
+  }
+
+  // 🔥 ROLE CHECK (IMPORTANT)
+  if (user.role !== "seller") {
+    alert("Not a seller account!");
+    window.location.href = "login.html";
+    return;
+  }
+
+  // 🔥 LOAD STATS
+  fetch(`${API_BASE_URL}/seller/dashboard/${user.id}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("totalPosts").textContent = data.totalPosts || 0;
+      document.getElementById("pendingRequests").textContent = data.totalRequests || 0;
+      document.getElementById("completedDeals").textContent = data.completedDeals || 0;
+    })
+    .catch(err => console.log(err));
+});
+</script>
+
+</body>
+</html>

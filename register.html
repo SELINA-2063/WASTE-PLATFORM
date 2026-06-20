@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register - W2REP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>Waste to Resource Exchange Platform</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html">Home</a>
+      <a class="active" href="register.html">Register</a>
+      <a href="login.html">Login</a>
+      <a href="waste-listing.html">Waste Listing</a>
+      <a href="search.html">Search Waste</a>
+      <a href="buyer-dashboard.html">Buyer Dashboard</a>
+      <a href="seller-dashboard.html">Seller Dashboard</a>
+    </nav>
+
+  </header>
+
+  <!-- REGISTER SECTION -->
+  <section class="hero">
+
+    <div class="hero-card form-wrap">
+
+      <h2 class="title">Create Your Account</h2>
+      <p class="subtitle">Register as Buyer or Seller</p>
+
+      <form id="registerForm" class="form-grid">
+
+        <div class="form-group">
+          <label>Full Name</label>
+          <input id="fullName" type="text" required />
+        </div>
+
+        <div class="form-group">
+          <label>Phone</label>
+          <input id="phone" type="text" required />
+        </div>
+
+        <div class="form-group">
+          <label>Address</label>
+          <input id="address" type="text" required />
+        </div>
+
+        <div class="form-group">
+          <label>Email</label>
+          <input id="email" type="email" required />
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <input id="password" type="password" required />
+        </div>
+
+        <div class="form-group">
+          <label>Role</label>
+          <select id="role" required>
+            <option value="">Select Role</option>
+            <option value="buyer">Buyer</option>
+            <option value="seller">Seller</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn">Register</button>
+
+      </form>
+
+      <!-- MESSAGE BOX -->
+      <p id="msg" style="margin-top:12px;font-weight:bold;"></p>
+
+    </div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    2026 Waste to Resource. All rights reserved.
+  </footer>
+
+</div>
+
+<!-- APP JS -->
+<script src="app.js"></script>
+
+<!-- REGISTER SCRIPT -->
+<script>
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const msg = document.getElementById("msg");
+
+  const data = {
+    full_name: document.getElementById("fullName").value,
+    phone: document.getElementById("phone").value,
+    address: document.getElementById("address").value,
+    email: document.getElementById("email").value,
+    password: document.getElementById("password").value,
+    role: document.getElementById("role").value
+  };
+
+  try {
+    const res = await fetch("http://localhost:5000/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      msg.style.color = "green";
+      msg.innerText = "✅ Registration successful! Redirecting to login...";
+
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 1500);
+
+    } else {
+      msg.style.color = "red";
+      msg.innerText = result.message || "❌ Registration failed!";
+    }
+
+  } catch (err) {
+    msg.style.color = "red";
+    msg.innerText = "❌ Server error!";
+  }
+});
+</script>
+
+</body>
+</html>

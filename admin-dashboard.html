@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard - W2REP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="header">
+
+    <div class="top-title">
+      <div class="logo">♻️</div>
+      <h1>Admin Control Panel</h1>
+    </div>
+
+    <nav class="nav">
+      <a class="active" href="admin-dashboard.html">Dashboard</a>
+      <a href="waste-listing.html">Waste</a>
+      <a href="index.html">Home</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </nav>
+
+  </header>
+
+  <!-- MAIN -->
+  <section class="hero">
+
+    <div class="admin-wrapper">
+
+      <!-- STATS -->
+      <div class="admin-stats">
+
+        <div class="admin-card">
+          <h2 id="totalUsers">0</h2>
+          <p>Users</p>
+        </div>
+
+        <div class="admin-card">
+          <h2 id="totalWaste">0</h2>
+          <p>Waste Posts</p>
+        </div>
+
+        <div class="admin-card">
+          <h2 id="totalRequests">0</h2>
+          <p>Requests</p>
+        </div>
+
+      </div>
+
+      <!-- USERS TABLE -->
+      <div class="table-card">
+        <h2>👤 Manage Users</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+
+          <tbody id="usersTable"></tbody>
+        </table>
+
+      </div>
+
+      <!-- WASTE TABLE -->
+      <div class="table-card">
+        <h2>📦 Manage Waste Posts</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Qty</th>
+              <th>Seller ID</th>
+            </tr>
+          </thead>
+
+          <tbody id="adminWasteTable"></tbody>
+        </table>
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <footer class="footer">
+    2026 Waste to Resource Admin Panel
+  </footer>
+
+</div>
+
+<script src="app.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const user = JSON.parse(localStorage.getItem("currentUser"));
+
+  if (!user || user.role !== "admin") {
+    window.location.href = "login.html";
+    return;
+  }
+
+  loadAdminDashboard();
+});
+
+function logout() {
+  localStorage.removeItem("currentUser");
+  window.location.href = "login.html";
+}
+</script>
+
+</body>
+</html>
