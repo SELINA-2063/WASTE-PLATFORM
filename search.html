@@ -160,10 +160,10 @@ async function sendRequest(wasteId) {
     return;
   }
 
-  const quantity = prompt("Koto quantity lagbe?");
+  const quantity = prompt("Enter quantity : ");
   if (!quantity) return;
 
-  const message = prompt("Seller ke kichu bolte chao? (optional)") || "";
+  const message = prompt("Any message for seller ? (optional)") || "";
 
   try {
     const res = await fetch(`${API_BASE_URL}/requests`, {
