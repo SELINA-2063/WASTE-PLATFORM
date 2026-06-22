@@ -44,6 +44,31 @@ app.post('/api/auth/login', (req, res) => {
 
 
 /* =========================
+HELPER - GENERATE CUSTOM ID (AD-01, B-01, S-01)
+========================= */
+function generateCustomId(role, callback) {
+  const prefixMap = { admin: 'AD', buyer: 'B', seller: 'S' };
+  const prefix = prefixMap[role] || 'B';
+
+  db.query(
+    `SELECT custom_id FROM users WHERE role = ? ORDER BY id DESC LIMIT 1`,
+    [role],
+    (err, results) => {
+      if (err) return callback(err);
+
+      let nextNum = 1;
+      if (results.length > 0 && results[0].custom_id) {
+        const lastNum = parseInt(results[0].custom_id.split('-')[1], 10);
+        if (!isNaN(lastNum)) nextNum = lastNum + 1;
+      }
+
+      const padded = String(nextNum).padStart(2, '0');
+      callback(null, `${prefix}-${padded}`);
+    }
+  );
+}
+
+/* =========================
 AUTH - REGISTER
 ========================= */
 app.post('/api/auth/register', (req, res) => {
@@ -53,39 +78,52 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  const sql = `
-    INSERT INTO users (full_name, phone, address, email, password, role)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(
-    sql,
-    [full_name, phone, address, email, password, role],
-    (err, result) => {
-      if (err) {
-        console.error('REGISTER ERROR:', err);
-        return res.status(500).json({ message: 'Database error' });
-      }
-
-      res.status(201).json({
-        message: 'User registered successfully',
-        userId: result.insertId
-      });
+  generateCustomId(role, (genErr, customId) => {
+    if (genErr) {
+      console.error('CUSTOM ID GENERATION ERROR:', genErr);
+      return res.status(500).json({ message: 'Database error' });
     }
-  );
+
+    const sql = `
+      INSERT INTO users (full_name, phone, address, email, password, role, custom_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      sql,
+      [full_name, phone, address, email, password, role, customId],
+      (err, result) => {
+        if (err) {
+          console.error('REGISTER ERROR:', err);
+          return res.status(500).json({ message: 'Database error' });
+        }
+
+        res.status(201).json({
+          message: 'User registered successfully',
+          userId: result.insertId,
+          customId: customId
+        });
+      }
+    );
+  });
 });
 
 
 /* =========================
-ADMIN - USERS
+ADMIN - USERS (grouped by role: admin / buyer / seller)
 ========================= */
 app.get('/api/admin/users', (req, res) => {
-  db.query(`SELECT * FROM users`, (err, result) => {
+  db.query(`SELECT * FROM users ORDER BY id ASC`, (err, result) => {
     if (err) {
       console.error(err);
-      return res.status(500).json([]);
+      return res.status(500).json({ admins: [], buyers: [], sellers: [] });
     }
-    res.json(result);
+
+    const admins = result.filter(u => u.role === 'admin');
+    const buyers = result.filter(u => u.role === 'buyer');
+    const sellers = result.filter(u => u.role === 'seller');
+
+    res.json({ admins, buyers, sellers });
   });
 });
 
@@ -227,9 +265,6 @@ app.get('/api/waste/search', (req, res) => {
 /* =========================
 BUYER - SEND REQUEST
 ========================= */
-/* =========================
-BUYER - SEND REQUEST
-========================= */
 app.post('/api/requests', (req, res) => {
   const { waste_id, buyer_id, quantity, message, proposed_price } = req.body;
 
@@ -340,7 +375,7 @@ app.get('/api/buyer/profile/:id', (req, res) => {
 });
 
 /* =========================
-SELLER - MY POSTS (🔥 MISSING ছিল এটা)
+SELLER - MY POSTS
 ========================= */
 app.get('/api/waste/my/:seller_id', (req, res) => {
   const seller_id = req.params.seller_id;
@@ -395,10 +430,6 @@ app.post('/api/waste/post', (req, res) => {
     }
   );
 });
-
-
-
-
 
 
 //buyer request page

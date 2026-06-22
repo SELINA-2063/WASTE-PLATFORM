@@ -74,26 +74,37 @@ async function loadAdminDashboard() {
       fetch(`${API_BASE_URL}/requests`)
     ]);
 
-    const users = await usersRes.json();
+    const usersData = await usersRes.json();
     const waste = await wasteRes.json();
     const requests = await reqRes.json();
 
-    document.getElementById('totalUsers').innerText = users.length || 0;
+    const admins = usersData.admins || [];
+    const buyers = usersData.buyers || [];
+    const sellers = usersData.sellers || [];
+
+    document.getElementById('totalUsers').innerText =
+      admins.length + buyers.length + sellers.length;
     document.getElementById('totalWaste').innerText = waste.length || 0;
     document.getElementById('totalRequests').innerText = requests.length || 0;
 
-    /* USERS TABLE */
-    const usersTable = document.getElementById('usersTable');
-    if (usersTable) {
-      usersTable.innerHTML = users.map(u => `
+    /* helper to render one role table */
+    function renderUserTable(tbodyId, list) {
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return;
+
+      tbody.innerHTML = list.map(u => `
         <tr>
-          <td>${u.id}</td>
+          <td>${u.custom_id || u.id}</td>
           <td>${u.full_name}</td>
           <td>${u.email}</td>
-          <td>${u.role}</td>
+          <td>${u.phone || '-'}</td>
         </tr>
       `).join('');
     }
+
+    renderUserTable('adminUsersTable', admins);
+    renderUserTable('buyerUsersTable', buyers);
+    renderUserTable('sellerUsersTable', sellers);
 
     /* WASTE TABLE */
     const wasteTable = document.getElementById('adminWasteTable');
