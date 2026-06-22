@@ -1263,3 +1263,56 @@ html {
   text-align: center;
   color: #888;
 }
+
+/* ===== WASTE APPROVAL STATUS BADGES ===== */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-pending {
+  background: #fff3cd;
+  color: #8a6d00;
+}
+
+.status-approved {
+  background: #d4f7e3;
+  color: #0a8f52;
+}
+
+.status-rejected {
+  background: #fde2e2;
+  color: #c0392b;
+}
+
+/* ===== APPROVE / REJECT BUTTONS ===== */
+.btn-approve,
+.btn-reject {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 2px;
+  color: white;
+}
+
+.btn-approve {
+  background: #12b76a;
+}
+
+.btn-approve:hover {
+  background: #0a8f52;
+}
+
+.btn-reject {
+  background: #e74c3c;
+}
+
+.btn-reject:hover {
+  background: #c0392b;
+}

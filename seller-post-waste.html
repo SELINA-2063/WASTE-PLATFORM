@@ -87,6 +87,15 @@
 <!-- JS -->
 <script src="app.js"></script>
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const user = JSON.parse(localStorage.getItem("currentUser"));
+
+  if (!user || user.role !== "seller") {
+    window.location.href = "login.html";
+    return;
+  }
+});
+
 document.getElementById("sellerPostForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 

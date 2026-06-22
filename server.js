@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 const db = require('./db');
 
 const app = express();
@@ -132,13 +134,44 @@ app.get('/api/admin/users', (req, res) => {
 ADMIN - WASTE POSTS
 ========================= */
 app.get('/api/admin/waste', (req, res) => {
-  db.query(`SELECT * FROM waste_posts`, (err, result) => {
+  db.query(`
+    SELECT wp.*, u.custom_id AS seller_custom_id
+    FROM waste_posts wp
+    LEFT JOIN users u ON wp.seller_id = u.id
+  `, (err, result) => {
     if (err) {
       console.error(err);
       return res.status(500).json([]);
     }
     res.json(result);
   });
+});
+
+
+/* =========================
+ADMIN - APPROVE / REJECT WASTE POST
+========================= */
+app.put('/api/admin/waste/:id/status', (req, res) => {
+  const id = req.params.id;
+  const { status } = req.body;
+
+  const allowedStatuses = ['pending', 'approved', 'rejected'];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status value' });
+  }
+
+  db.query(
+    `UPDATE waste_posts SET status = ? WHERE id = ?`,
+    [status, id],
+    (err) => {
+      if (err) {
+        console.error('WASTE STATUS UPDATE ERROR:', err);
+        return res.status(500).json({ message: 'Database error' });
+      }
+
+      res.json({ message: `Waste post ${status}` });
+    }
+  );
 });
 
 
@@ -232,7 +265,7 @@ app.get('/api/waste/search', (req, res) => {
     SELECT wp.*, u.full_name AS seller_name
     FROM waste_posts wp
     JOIN users u ON wp.seller_id = u.id
-    WHERE 1=1
+    WHERE wp.status = 'approved'
   `;
   const params = [];
 
@@ -262,6 +295,9 @@ app.get('/api/waste/search', (req, res) => {
   });
 });
 
+/* =========================
+BUYER - SEND REQUEST
+========================= */
 /* =========================
 BUYER - SEND REQUEST
 ========================= */
@@ -334,9 +370,12 @@ app.get('/api/requests/buyer/:buyer_id', (req, res) => {
       wr.status,
       wr.created_at,
       wp.name AS waste_name,
-      wp.location AS location
+      wp.location AS location,
+      wp.seller_id AS seller_id,
+      u.full_name AS seller_name
     FROM waste_requests wr
     JOIN waste_posts wp ON wr.waste_id = wp.id
+    JOIN users u ON wp.seller_id = u.id
     WHERE wr.buyer_id = ?
     ORDER BY wr.id DESC
   `;
@@ -375,7 +414,7 @@ app.get('/api/buyer/profile/:id', (req, res) => {
 });
 
 /* =========================
-SELLER - MY POSTS
+SELLER - MY POSTS (🔥 MISSING ছিল এটা)
 ========================= */
 app.get('/api/waste/my/:seller_id', (req, res) => {
   const seller_id = req.params.seller_id;
@@ -407,29 +446,45 @@ app.post('/api/waste/post', (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  const qty = Number(quantity);
-
-  const sql = `
-    INSERT INTO waste_posts (name, type, quantity, location, description, seller_id)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(
-    sql,
-    [name, type, qty, location, description, seller_id],
-    (err, result) => {
-      if (err) {
-        console.error('WASTE POST ERROR:', err);
-        return res.status(500).json({ message: 'Database error' });
-      }
-
-      res.status(201).json({
-        message: 'Waste posted successfully',
-        postId: result.insertId
-      });
+  // Only users with role = 'seller' are allowed to post waste
+  db.query(`SELECT role FROM users WHERE id = ?`, [seller_id], (roleErr, roleResult) => {
+    if (roleErr) {
+      console.error('ROLE CHECK ERROR:', roleErr);
+      return res.status(500).json({ message: 'Database error' });
     }
-  );
+
+    if (roleResult.length === 0 || roleResult[0].role !== 'seller') {
+      return res.status(403).json({ message: 'Only sellers can post waste' });
+    }
+
+    const qty = Number(quantity);
+
+    const sql = `
+      INSERT INTO waste_posts (name, type, quantity, location, description, seller_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      sql,
+      [name, type, qty, location, description, seller_id],
+      (err, result) => {
+        if (err) {
+          console.error('WASTE POST ERROR:', err);
+          return res.status(500).json({ message: 'Database error' });
+        }
+
+        res.status(201).json({
+          message: 'Waste posted successfully',
+          postId: result.insertId
+        });
+      }
+    );
+  });
 });
+
+
+
+
 
 
 //buyer request page
@@ -439,6 +494,7 @@ app.get('/api/requests/:seller_id', (req, res) => {
   const sql = `
     SELECT 
       wr.id,
+      wr.buyer_id,
       wr.message,
       wr.quantity,
       wr.proposed_price,
@@ -483,10 +539,74 @@ app.put('/api/requests/:id', (req, res) => {
 
 
 /* =========================
+CHAT - GET MESSAGE HISTORY FOR A REQUEST
+========================= */
+app.get('/api/messages/:request_id', (req, res) => {
+  const request_id = req.params.request_id;
+
+  db.query(
+    `SELECT * FROM messages WHERE request_id = ? ORDER BY created_at ASC`,
+    [request_id],
+    (err, result) => {
+      if (err) {
+        console.error('FETCH MESSAGES ERROR:', err);
+        return res.status(500).json([]);
+      }
+      res.json(result);
+    }
+  );
+});
+
+
+/* =========================
 SERVER START
 ========================= */
 const PORT = 5000;
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
+
+io.on('connection', (socket) => {
+  console.log('🔌 User connected:', socket.id);
+
+  socket.on('join_room', (roomId) => {
+    socket.join(roomId);
+  });
+
+  socket.on('send_message', (data) => {
+    const { request_id, sender_id, message } = data;
+
+    if (!request_id || !sender_id || !message) return;
+
+    db.query(
+      `INSERT INTO messages (request_id, sender_id, message) VALUES (?, ?, ?)`,
+      [request_id, sender_id, message],
+      (err, result) => {
+        if (err) {
+          console.error('MESSAGE SAVE ERROR:', err);
+          return;
+        }
+
+        const roomId = `request_${request_id}`;
+
+        io.to(roomId).emit('receive_message', {
+          id: result.insertId,
+          request_id,
+          sender_id,
+          message,
+          created_at: new Date()
+        });
+      }
+    );
+  });
+
+  socket.on('disconnect', () => {
+    console.log('❌ User disconnected:', socket.id);
+  });
+});
+
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

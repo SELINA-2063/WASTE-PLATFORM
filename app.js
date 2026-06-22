@@ -114,7 +114,12 @@ async function loadAdminDashboard() {
           <td>${w.name}</td>
           <td>${w.type}</td>
           <td>${w.quantity}</td>
-          <td>${w.seller_id}</td>
+          <td>${w.seller_custom_id || w.seller_id}</td>
+          <td><span class="status-badge status-${w.status}">${w.status}</span></td>
+          <td>
+            ${w.status !== 'approved' ? `<button class="btn-approve" onclick="updateWasteStatus(${w.id}, 'approved')">✅ Approve</button>` : ''}
+            ${w.status !== 'rejected' ? `<button class="btn-reject" onclick="updateWasteStatus(${w.id}, 'rejected')">❌ Reject</button>` : ''}
+          </td>
         </tr>
       `).join('');
     }
@@ -123,6 +128,34 @@ async function loadAdminDashboard() {
     console.log("Admin dashboard error:", err);
   }
 }
+
+/* =========================
+ADMIN - APPROVE / REJECT WASTE POST
+========================= */
+async function updateWasteStatus(id, status) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/admin/waste/${id}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+
+    if (!res.ok) {
+      alert('Failed to update status');
+      return;
+    }
+
+    loadAdminDashboard(); // refresh table after update
+
+  } catch (err) {
+    console.log("Update waste status error:", err);
+    alert("Server error");
+  }
+}
+
+/* =========================
+SELLER DASHBOARD
+========================= */
 
 /* =========================
 SELLER DASHBOARD
