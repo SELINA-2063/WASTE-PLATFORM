@@ -298,9 +298,6 @@ app.get('/api/waste/search', (req, res) => {
 /* =========================
 BUYER - SEND REQUEST
 ========================= */
-/* =========================
-BUYER - SEND REQUEST
-========================= */
 app.post('/api/requests', (req, res) => {
   const { waste_id, buyer_id, quantity, message, proposed_price } = req.body;
 
@@ -414,7 +411,7 @@ app.get('/api/buyer/profile/:id', (req, res) => {
 });
 
 /* =========================
-SELLER - MY POSTS (🔥 MISSING ছিল এটা)
+SELLER - MY POSTS
 ========================= */
 app.get('/api/waste/my/:seller_id', (req, res) => {
   const seller_id = req.params.seller_id;
@@ -481,10 +478,6 @@ app.post('/api/waste/post', (req, res) => {
     );
   });
 });
-
-
-
-
 
 
 //buyer request page
@@ -571,6 +564,13 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('🔌 User connected:', socket.id);
 
+  // Each logged-in user joins their own personal room (user_<id>)
+  // This lets us send a notification directly to them, on ANY page,
+  // even if they are not currently inside a specific chat room.
+  socket.on('register_user', (userId) => {
+    socket.join(`user_${userId}`);
+  });
+
   socket.on('join_room', (roomId) => {
     socket.join(roomId);
   });
@@ -590,14 +590,51 @@ io.on('connection', (socket) => {
         }
 
         const roomId = `request_${request_id}`;
-
-        io.to(roomId).emit('receive_message', {
+        const messageData = {
           id: result.insertId,
           request_id,
           sender_id,
           message,
           created_at: new Date()
-        });
+        };
+
+        // 1) Send to anyone currently INSIDE this chat window (real-time chat)
+        io.to(roomId).emit('receive_message', messageData);
+
+        // 2) Figure out WHO the recipient is (the other party in this request)
+        //    so we can send them a global toast notification, regardless of
+        //    which page they are currently on.
+        db.query(
+          `SELECT wr.buyer_id, wp.seller_id, wp.name AS waste_name
+           FROM waste_requests wr
+           JOIN waste_posts wp ON wr.waste_id = wp.id
+           WHERE wr.id = ?`,
+          [request_id],
+          (err2, rows) => {
+            if (err2 || rows.length === 0) return;
+
+            const { buyer_id, seller_id, waste_name } = rows[0];
+            const recipientId =
+              Number(sender_id) === Number(buyer_id) ? seller_id : buyer_id;
+
+            db.query(
+              `SELECT full_name FROM users WHERE id = ?`,
+              [sender_id],
+              (err3, senderRows) => {
+                const senderName =
+                  !err3 && senderRows.length > 0 ? senderRows[0].full_name : 'Someone';
+
+                io.to(`user_${recipientId}`).emit('new_message_notification', {
+                  request_id,
+                  sender_id,
+                  sender_name: senderName,
+                  message,
+                  waste_name
+                });
+              }
+            );
+          }
+        );
       }
     );
   });

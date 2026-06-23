@@ -109,6 +109,9 @@ async function loadRequests() {
           <button class="reject" onclick="updateRequest(${req.id}, 'rejected')">
             ✖ Reject
           </button>
+          <button class="chat-btn" onclick="window.location.href='chat.html?request_id=${req.id}&otherName=${encodeURIComponent(req.buyer_name)}'">
+            💬 Chat with Buyer
+          </button>
         </div>
       </div>
     `).join('');

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Private Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Private Chat - W2REP</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
 
@@ -14,7 +15,7 @@
 
     <div class="chat-info">
       <h3>💬 Private Chat</h3>
-      <p id="roomInfo"></p>
+      <p id="roomInfo">Loading...</p>
     </div>
 
     <div id="chatBox" class="chat-box"></div>
@@ -32,42 +33,103 @@
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <script>
+const API_BASE_URL = 'http://localhost:5000/api';
+
+function getCurrentUser() {
+  return JSON.parse(localStorage.getItem("currentUser") || "null");
+}
+
+const currentUser = getCurrentUser();
+
+if (!currentUser) {
+  window.location.href = "login.html";
+}
+
+// 🔥 GET request_id FROM URL (e.g. chat.html?request_id=5&otherName=Karim)
+const params = new URLSearchParams(window.location.search);
+const requestId = params.get("request_id");
+const otherName = params.get("otherName") || "User";
+
+if (!requestId) {
+  alert("No request selected for chat!");
+  window.location.href = "index.html";
+}
+
+const roomId = `request_${requestId}`;
+document.getElementById("roomInfo").innerText = `Chat with ${otherName}`;
+
 const socket = io("http://localhost:5000");
 
-// 🔥 ROOM ID (buyer + seller + waste)
-const roomId = "waste_101_buyer5_seller2";
+// Join personal room too, so if a DIFFERENT conversation gets a
+// message while this chat is open, the global toast still works
+socket.emit("register_user", currentUser.id);
 
-document.getElementById("roomInfo").innerText = roomId;
 
 // JOIN ROOM
 socket.emit("join_room", roomId);
 
-// RECEIVE MESSAGE
+const chatBox = document.getElementById("chatBox");
+
+/* RENDER ONE MESSAGE BUBBLE */
+function renderMessage(msg) {
+  const div = document.createElement("div");
+  div.classList.add("msg");
+
+  // "user" = message sent by ME, "other" = message sent by the other person
+  div.classList.add(msg.sender_id === currentUser.id ? "user" : "other");
+
+  div.innerText = msg.message;
+  chatBox.appendChild(div);
+}
+
+/* LOAD OLD MESSAGE HISTORY (REST API) */
+async function loadHistory() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/messages/${requestId}`);
+    const data = await res.json();
+
+    chatBox.innerHTML = "";
+    data.forEach(renderMessage);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+  } catch (err) {
+    console.log("Chat history error:", err);
+  }
+}
+
+/* RECEIVE NEW MESSAGE (REAL-TIME) */
 socket.on("receive_message", (data) => {
-  const box = document.getElementById("chatBox");
-
-  const msg = document.createElement("div");
-  msg.classList.add("msg");
-
-  msg.classList.add(data.sender === "buyer" ? "user" : "other");
-
-  msg.innerText = data.message;
-
-  box.appendChild(msg);
+  // only show it if it belongs to this room/request
+  if (String(data.request_id) === String(requestId)) {
+    renderMessage(data);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
 });
 
-// SEND MESSAGE
+/* SEND MESSAGE */
 function sendMessage() {
   const input = document.getElementById("msgInput");
+  const text = input.value.trim();
+
+  if (!text) return;
 
   socket.emit("send_message", {
-    roomId: roomId,
-    message: input.value,
-    sender: "buyer"
+    request_id: requestId,
+    sender_id: currentUser.id,
+    message: text
   });
 
   input.value = "";
 }
+
+/* SEND ON ENTER KEY */
+document.getElementById("msgInput").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+/* INIT */
+loadHistory();
 </script>
 
 </body>

@@ -177,6 +177,56 @@ async function loadSellerDashboard() {
 }
 
 /* =========================
+GLOBAL REAL-TIME NOTIFICATIONS
+(runs on every page that includes app.js, if user is logged in)
+========================= */
+function initGlobalNotifications() {
+  const user = getCurrentUser();
+  if (!user) return; // not logged in, skip
+
+  // Dynamically load the socket.io client library (so we don't need
+  // to add a <script> tag to every single HTML page)
+  const script = document.createElement('script');
+  script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+
+  script.onload = () => {
+    const socket = io('http://localhost:5000');
+
+    // Join our personal notification room
+    socket.emit('register_user', user.id);
+socket.on('new_message_notification', (data) => {
+      showToast(data);
+    });
+    
+  };
+
+  document.head.appendChild(script);
+}
+
+/* TOAST POPUP UI */
+function showToast(data) {
+  const toast = document.createElement('div');
+  toast.className = 'global-toast';
+
+  toast.innerHTML = `
+    <strong>💬 ${data.sender_name}</strong>
+    <p>${data.message}</p>
+    <span class="toast-sub">re: ${data.waste_name || 'your request'}</span>
+  `;
+
+  toast.onclick = () => {
+    window.location.href = `chat.html?request_id=${data.request_id}&otherName=${encodeURIComponent(data.sender_name)}`;
+  };
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('toast-hide');
+    setTimeout(() => toast.remove(), 400);
+  }, 5000);
+}
+
+/* =========================
 AUTO INIT
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
@@ -195,4 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('totalPosts')) {
     loadSellerDashboard();
   }
+
+  // GLOBAL NOTIFICATIONS (every page, if logged in)
+  initGlobalNotifications();
 });

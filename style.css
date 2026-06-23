@@ -1316,3 +1316,68 @@ html {
 .btn-reject:hover {
   background: #c0392b;
 }
+
+/* ===== CHAT BUTTON ===== */
+.chat-btn {
+  background: #2d6cdf;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-btn:hover {
+  background: #1d4ed8;
+}
+
+/* ===== GLOBAL TOAST NOTIFICATION ===== */
+.global-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1f2937;
+  color: white;
+  padding: 14px 18px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  max-width: 320px;
+  cursor: pointer;
+  z-index: 99999;
+  animation: toastIn 0.3s ease;
+}
+
+.global-toast strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #12b76a;
+}
+
+.global-toast p {
+  margin: 0;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.toast-sub {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.global-toast.toast-hide {
+  animation: toastOut 0.4s ease forwards;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(20px); }
+}

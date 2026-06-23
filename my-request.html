@@ -50,12 +50,13 @@
             <th>Location</th>
             <th>Status</th>
             <th>Date</th>
+            <th>Chat</th>
           </tr>
         </thead>
 
         <tbody id="requestsTableBody">
           <tr>
-            <td colspan="5" class="empty-state">
+            <td colspan="6" class="empty-state">
               No requests yet
             </td>
           </tr>
@@ -97,7 +98,7 @@ async function loadMyRequests(buyerId) {
     const tbody = document.getElementById("requestsTableBody");
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No requests yet</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No requests yet</td></tr>`;
       return;
     }
 
@@ -110,6 +111,11 @@ async function loadMyRequests(buyerId) {
           <td>${r.location || '-'}</td>
           <td><span class="status ${r.status}">${r.status}</span></td>
           <td>${date}</td>
+          <td>
+            <button class="chat-btn" onclick="window.location.href='chat.html?request_id=${r.id}&otherName=${encodeURIComponent(r.seller_name)}'">
+              💬 Chat
+            </button>
+          </td>
         </tr>
       `;
     }).join('');
