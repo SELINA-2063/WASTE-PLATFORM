@@ -200,7 +200,7 @@ app.get('/api/seller/dashboard/:id', (req, res) => {
   const q2 = `
     SELECT 
       SUM(CASE WHEN wr.status = 'pending' THEN 1 ELSE 0 END) AS pendingRequests,
-      SUM(CASE WHEN wr.status = 'accepted' THEN 1 ELSE 0 END) AS completedDeals
+      SUM(CASE WHEN wr.status = 'completed' THEN 1 ELSE 0 END) AS completedDeals
     FROM waste_requests wr
     JOIN waste_posts wp ON wr.waste_id = wp.id
     WHERE wp.seller_id = ?
@@ -369,10 +369,20 @@ app.get('/api/requests/buyer/:buyer_id', (req, res) => {
       wp.name AS waste_name,
       wp.location AS location,
       wp.seller_id AS seller_id,
-      u.full_name AS seller_name
+      u.full_name AS seller_name,
+      u.phone AS seller_phone,
+      d.id AS delivery_id,
+      d.delivery_method,
+      d.address AS delivery_address,
+      d.scheduled_date,
+      d.delivery_person_name,
+      d.delivery_person_phone,
+      d.notes AS delivery_notes,
+      d.status AS delivery_status
     FROM waste_requests wr
     JOIN waste_posts wp ON wr.waste_id = wp.id
     JOIN users u ON wp.seller_id = u.id
+    LEFT JOIN deliveries d ON d.request_id = wr.id
     WHERE wr.buyer_id = ?
     ORDER BY wr.id DESC
   `;
@@ -495,10 +505,22 @@ app.get('/api/requests/:seller_id', (req, res) => {
       wr.created_at,
       wp.name AS waste_name,
       wp.type AS waste_type,
-      u.full_name AS buyer_name
+      wp.location AS pickup_location,
+      u.full_name AS buyer_name,
+      u.address AS buyer_address,
+      u.phone AS buyer_phone,
+      d.id AS delivery_id,
+      d.delivery_method,
+      d.address AS delivery_address,
+      d.scheduled_date,
+      d.delivery_person_name,
+      d.delivery_person_phone,
+      d.notes AS delivery_notes,
+      d.status AS delivery_status
     FROM waste_requests wr
     JOIN waste_posts wp ON wr.waste_id = wp.id
     JOIN users u ON wr.buyer_id = u.id
+    LEFT JOIN deliveries d ON d.request_id = wr.id
     WHERE wp.seller_id = ?
     ORDER BY wr.id DESC
   `;
@@ -528,6 +550,154 @@ app.put('/api/requests/:id', (req, res) => {
       res.json({ message: "updated" });
     }
   );
+});
+
+
+/* =========================
+DELIVERY - HELPER: notify buyer & seller in real-time
+========================= */
+function notifyDeliveryUpdate(requestId, status) {
+  db.query(
+    `SELECT wr.buyer_id, wp.seller_id, wp.name AS waste_name
+     FROM waste_requests wr
+     JOIN waste_posts wp ON wr.waste_id = wp.id
+     WHERE wr.id = ?`,
+    [requestId],
+    (err, rows) => {
+      if (err || rows.length === 0) return;
+
+      const { buyer_id, seller_id, waste_name } = rows[0];
+      const payload = { request_id: requestId, status, waste_name };
+
+      io.to(`user_${buyer_id}`).emit('delivery_update', payload);
+      io.to(`user_${seller_id}`).emit('delivery_update', payload);
+    }
+  );
+}
+
+/* =========================
+DELIVERY - SCHEDULE (seller sets method, address, date etc.)
+Only allowed once the request has been accepted.
+========================= */
+app.post('/api/deliveries', (req, res) => {
+  const {
+    request_id,
+    delivery_method,
+    address,
+    scheduled_date,
+    delivery_person_name,
+    delivery_person_phone,
+    notes
+  } = req.body;
+
+  if (!request_id || !delivery_method || !address) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  if (!['pickup', 'seller_delivery'].includes(delivery_method)) {
+    return res.status(400).json({ message: 'Invalid delivery method' });
+  }
+
+  db.query(`SELECT status FROM waste_requests WHERE id = ?`, [request_id], (err, results) => {
+    if (err) {
+      console.error('DELIVERY - REQUEST CHECK ERROR:', err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    if (results[0].status !== 'accepted') {
+      return res.status(400).json({ message: 'Delivery can only be scheduled for accepted requests' });
+    }
+
+    const sql = `
+      INSERT INTO deliveries
+        (request_id, delivery_method, address, scheduled_date, delivery_person_name, delivery_person_phone, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      sql,
+      [
+        request_id,
+        delivery_method,
+        address,
+        scheduled_date || null,
+        delivery_person_name || null,
+        delivery_person_phone || null,
+        notes || null
+      ],
+      (err2, result) => {
+        if (err2) {
+          console.error('DELIVERY CREATE ERROR:', err2);
+          return res.status(500).json({ message: 'Database error' });
+        }
+
+        notifyDeliveryUpdate(request_id, 'scheduled');
+
+        res.status(201).json({
+          message: 'Delivery scheduled successfully',
+          deliveryId: result.insertId
+        });
+      }
+    );
+  });
+});
+
+/* =========================
+DELIVERY - UPDATE STATUS
+(scheduled -> out_for_delivery -> delivered, or cancelled)
+When marked 'delivered', the linked request is also marked 'completed'.
+========================= */
+app.put('/api/deliveries/:id/status', (req, res) => {
+  const id = req.params.id;
+  const { status } = req.body;
+
+  const allowedStatuses = ['scheduled', 'out_for_delivery', 'delivered', 'cancelled'];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status value' });
+  }
+
+  db.query(`SELECT request_id FROM deliveries WHERE id = ?`, [id], (err, rows) => {
+    if (err) {
+      console.error('DELIVERY STATUS LOOKUP ERROR:', err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Delivery not found' });
+    }
+
+    const requestId = rows[0].request_id;
+
+    db.query(`UPDATE deliveries SET status = ? WHERE id = ?`, [status, id], (err2) => {
+      if (err2) {
+        console.error('DELIVERY STATUS UPDATE ERROR:', err2);
+        return res.status(500).json({ message: 'Database error' });
+      }
+
+      const finishUp = () => {
+        notifyDeliveryUpdate(requestId, status);
+        res.json({ message: `Delivery marked as ${status}` });
+      };
+
+      // Once delivered, the whole request/deal is considered completed
+      if (status === 'delivered') {
+        db.query(
+          `UPDATE waste_requests SET status = 'completed' WHERE id = ?`,
+          [requestId],
+          (err3) => {
+            if (err3) console.error('REQUEST COMPLETE UPDATE ERROR:', err3);
+            finishUp();
+          }
+        );
+      } else {
+        finishUp();
+      }
+    });
+  });
 });
 
 

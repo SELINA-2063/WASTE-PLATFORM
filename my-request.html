@@ -49,6 +49,7 @@
             <th>Quantity</th>
             <th>Location</th>
             <th>Status</th>
+            <th>Delivery</th>
             <th>Date</th>
             <th>Chat</th>
           </tr>
@@ -56,7 +57,7 @@
 
         <tbody id="requestsTableBody">
           <tr>
-            <td colspan="6" class="empty-state">
+            <td colspan="7" class="empty-state">
               No requests yet
             </td>
           </tr>
@@ -98,7 +99,7 @@ async function loadMyRequests(buyerId) {
     const tbody = document.getElementById("requestsTableBody");
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No requests yet</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No requests yet</td></tr>`;
       return;
     }
 
@@ -110,6 +111,7 @@ async function loadMyRequests(buyerId) {
           <td>${r.quantity}</td>
           <td>${r.location || '-'}</td>
           <td><span class="status ${r.status}">${r.status}</span></td>
+          <td>${renderDeliveryCell(r)}</td>
           <td>${date}</td>
           <td>
             <button class="chat-btn" onclick="window.location.href='chat.html?request_id=${r.id}&otherName=${encodeURIComponent(r.seller_name)}'">
@@ -122,6 +124,69 @@ async function loadMyRequests(buyerId) {
 
   } catch (err) {
     console.log("My requests error:", err);
+  }
+}
+
+/* =========================
+DELIVERY CELL (buyer side)
+========================= */
+function renderDeliveryCell(r) {
+  if (r.status !== 'accepted' && r.status !== 'completed') {
+    return `<span style="color:#999;">-</span>`;
+  }
+
+  if (!r.delivery_id) {
+    return `<span style="color:#b8860b;">⏳ Awaiting seller</span>`;
+  }
+
+  const methodLabel = r.delivery_method === 'pickup' ? '🧍 Pickup' : '🚐 Delivery';
+  const dateLabel = r.scheduled_date ? new Date(r.scheduled_date).toLocaleDateString() : '-';
+
+  let extra = `
+    <div style="font-size:12px; color:#555; margin-top:4px;">
+      ${methodLabel} · ${dateLabel}
+    </div>
+  `;
+
+  if (r.delivery_method === 'seller_delivery' && r.delivery_person_name) {
+    extra += `<div style="font-size:12px; color:#555;">👤 ${r.delivery_person_name} (${r.delivery_person_phone || '-'})</div>`;
+  }
+
+  // Buyer can self-confirm pickup once seller marks it scheduled/out for pickup
+  if (r.delivery_method === 'pickup' && r.delivery_status === 'scheduled') {
+    extra += `
+      <button class="schedule-confirm-btn" style="margin-top:6px;"
+        onclick="confirmPickup(${r.delivery_id})">
+        ✅ Confirm Pickup
+      </button>
+    `;
+  }
+
+  return `
+    <span class="status ${r.delivery_status}">${(r.delivery_status || '').replace('_',' ')}</span>
+    ${extra}
+  `;
+}
+
+async function confirmPickup(deliveryId) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/deliveries/${deliveryId}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "delivered" })
+    });
+
+    if (!res.ok) {
+      alert("Update failed");
+      return;
+    }
+
+    const user = getCurrentUser();
+    loadMyRequests(user.id);
+
+  } catch (err) {
+    console.log("Confirm pickup error:", err);
+    alert("Server error");
   }
 }
 </script>

@@ -156,10 +156,6 @@ async function updateWasteStatus(id, status) {
 /* =========================
 SELLER DASHBOARD
 ========================= */
-
-/* =========================
-SELLER DASHBOARD
-========================= */
 async function loadSellerDashboard() {
   const user = getCurrentUser();
   if (!user) return;
@@ -197,10 +193,43 @@ function initGlobalNotifications() {
 socket.on('new_message_notification', (data) => {
       showToast(data);
     });
+
+    socket.on('delivery_update', (data) => {
+      showDeliveryToast(data);
+
+      // If we're currently on a page showing requests/deliveries, refresh it
+      if (typeof loadRequests === 'function') loadRequests();
+      if (typeof loadMyRequests === 'function') loadMyRequests(user.id);
+    });
     
   };
 
   document.head.appendChild(script);
+}
+
+/* DELIVERY TOAST POPUP UI */
+function showDeliveryToast(data) {
+  const labels = {
+    scheduled: '📅 Delivery scheduled',
+    out_for_delivery: '🚚 Out for delivery',
+    delivered: '✅ Delivered',
+    cancelled: '❌ Delivery cancelled'
+  };
+
+  const toast = document.createElement('div');
+  toast.className = 'global-toast';
+
+  toast.innerHTML = `
+    <strong>${labels[data.status] || 'Delivery update'}</strong>
+    <p>${data.waste_name || 'Your request'}</p>
+  `;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('toast-hide');
+    setTimeout(() => toast.remove(), 400);
+  }, 5000);
 }
 
 /* TOAST POPUP UI */

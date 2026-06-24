@@ -1273,9 +1273,108 @@ html {
   text-transform: capitalize;
 }
 
-.status-pending {
+.status.pending {
   background: #fff3cd;
-  color: #8a6d00;
+  color: #b8860b;
+}
+
+.status.accepted {
+  background: #d4f7e3;
+  color: #0a8f52;
+}
+
+.status.rejected {
+  background: #fde2e2;
+  color: #c0392b;
+}
+
+.status.completed {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status.scheduled {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.status.out_for_delivery {
+  background: #ffe8cc;
+  color: #c2410c;
+}
+
+.status.delivered {
+  background: #d4f7e3;
+  color: #0a8f52;
+}
+
+.status.cancelled {
+  background: #fde2e2;
+  color: #c0392b;
+}
+
+/* ===== DELIVERY SECTION (seller + buyer) ===== */
+.delivery-box {
+  margin-top: 18px;
+  padding: 16px 18px;
+  background: #f6fff8;
+  border-left: 4px solid #12b76a;
+  border-radius: 10px;
+}
+
+.delivery-box .status {
+  margin-left: 10px;
+}
+
+.delivery-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery-form label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-top: 4px;
+}
+
+.delivery-form input,
+.delivery-form select,
+.delivery-form textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.schedule-btn,
+.schedule-confirm-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+  color: white;
+}
+
+.schedule-btn {
+  background: #12b76a;
+  margin-top: 10px;
+}
+
+.schedule-btn:hover {
+  background: #0a8f52;
+}
+
+.schedule-confirm-btn {
+  background: #2563eb;
+}
+
+.schedule-confirm-btn:hover {
+  background: #1d4ed8;
 }
 
 .status-approved {

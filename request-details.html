@@ -101,14 +101,18 @@ async function loadRequests() {
             <b>Message:</b>
             <p>${req.message || 'No message'}</p>
           </div>
+
+          ${renderDeliverySection(req)}
         </div>
         <div class="action-buttons">
-          <button class="accept" onclick="updateRequest(${req.id}, 'accepted')">
-            ✔ Accept
-          </button>
-          <button class="reject" onclick="updateRequest(${req.id}, 'rejected')">
-            ✖ Reject
-          </button>
+          ${req.status === 'pending' ? `
+            <button class="accept" onclick="updateRequest(${req.id}, 'accepted')">
+              ✔ Accept
+            </button>
+            <button class="reject" onclick="updateRequest(${req.id}, 'rejected')">
+              ✖ Reject
+            </button>
+          ` : ''}
           <button class="chat-btn" onclick="window.location.href='chat.html?request_id=${req.id}&otherName=${encodeURIComponent(req.buyer_name)}'">
             💬 Chat with Buyer
           </button>
@@ -118,6 +122,164 @@ async function loadRequests() {
 
   } catch (err) {
     console.log("Request load error:", err);
+  }
+}
+
+/* =========================
+DELIVERY SECTION (seller side)
+========================= */
+function renderDeliverySection(req) {
+  // Delivery only matters once the seller has accepted the request
+  if (req.status !== 'accepted' && req.status !== 'completed') return '';
+
+  // No delivery scheduled yet -> show the schedule form
+  if (!req.delivery_id) {
+    return `
+      <div class="delivery-box">
+        <b>🚚 Delivery not scheduled yet</b>
+        <button class="schedule-btn" onclick="toggleDeliveryForm(${req.id})">
+          📅 Schedule Delivery
+        </button>
+
+        <div id="deliveryForm-${req.id}" class="delivery-form" style="display:none;">
+          <label>Delivery Method</label>
+          <select id="method-${req.id}" onchange="toggleDeliveryFields(${req.id})">
+            <option value="pickup">🧍 Buyer will pick it up</option>
+            <option value="seller_delivery">🚐 I will deliver it</option>
+          </select>
+
+          <label>Address</label>
+          <input type="text" id="address-${req.id}" placeholder="${req.pickup_location || ''}"
+                 value="${req.pickup_location || ''}" />
+
+          <label>Scheduled Date</label>
+          <input type="date" id="date-${req.id}" />
+
+          <div id="sellerDeliveryFields-${req.id}" style="display:none;">
+            <label>Delivery Person Name</label>
+            <input type="text" id="dpName-${req.id}" placeholder="e.g. Karim Mia" />
+            <label>Delivery Person Phone</label>
+            <input type="text" id="dpPhone-${req.id}" placeholder="e.g. 01XXXXXXXXX" />
+          </div>
+
+          <label>Notes (optional)</label>
+          <textarea id="notes-${req.id}" placeholder="Any extra info for the buyer"></textarea>
+
+          <button class="schedule-confirm-btn" onclick="scheduleDelivery(${req.id})">
+            ✅ Confirm Schedule
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Delivery already exists -> show status + next-step controls
+  const methodLabel = req.delivery_method === 'pickup' ? '🧍 Buyer Pickup' : '🚐 Seller Delivery';
+
+  let actions = '';
+  if (req.delivery_status === 'scheduled') {
+    if (req.delivery_method === 'seller_delivery') {
+      actions += `<button class="schedule-btn" onclick="updateDeliveryStatus(${req.delivery_id}, 'out_for_delivery')">🚚 Mark Out for Delivery</button>`;
+    }
+    actions += `<button class="schedule-confirm-btn" onclick="updateDeliveryStatus(${req.delivery_id}, 'delivered')">✅ Mark Delivered</button>`;
+    actions += `<button class="reject" style="flex:none; padding:10px 14px;" onclick="updateDeliveryStatus(${req.delivery_id}, 'cancelled')">✖ Cancel</button>`;
+  } else if (req.delivery_status === 'out_for_delivery') {
+    actions += `<button class="schedule-confirm-btn" onclick="updateDeliveryStatus(${req.delivery_id}, 'delivered')">✅ Mark Delivered</button>`;
+  }
+
+  return `
+    <div class="delivery-box">
+      <b>🚚 Delivery Info</b>
+      <span class="status ${req.delivery_status}">${(req.delivery_status || '').replace('_',' ')}</span>
+      <div class="info-row"><b>Method:</b> ${methodLabel}</div>
+      <div class="info-row"><b>Address:</b> ${req.delivery_address || '-'}</div>
+      <div class="info-row"><b>Scheduled Date:</b> ${req.scheduled_date ? new Date(req.scheduled_date).toLocaleDateString() : '-'}</div>
+      ${req.delivery_method === 'seller_delivery' ? `
+        <div class="info-row"><b>Delivery Person:</b> ${req.delivery_person_name || '-'} (${req.delivery_person_phone || '-'})</div>
+      ` : ''}
+      ${req.delivery_notes ? `<div class="info-row"><b>Notes:</b> ${req.delivery_notes}</div>` : ''}
+      <div class="action-buttons">${actions}</div>
+    </div>
+  `;
+}
+
+function toggleDeliveryForm(reqId) {
+  const form = document.getElementById(`deliveryForm-${reqId}`);
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleDeliveryFields(reqId) {
+  const method = document.getElementById(`method-${reqId}`).value;
+  const fields = document.getElementById(`sellerDeliveryFields-${reqId}`);
+  fields.style.display = method === 'seller_delivery' ? 'block' : 'none';
+}
+
+async function scheduleDelivery(reqId) {
+  const delivery_method = document.getElementById(`method-${reqId}`).value;
+  const address = document.getElementById(`address-${reqId}`).value.trim();
+  const scheduled_date = document.getElementById(`date-${reqId}`).value;
+  const notes = document.getElementById(`notes-${reqId}`).value.trim();
+
+  if (!address) {
+    showNotif("⚠️ Address dite hobe!", "orange");
+    return;
+  }
+
+  const body = {
+    request_id: reqId,
+    delivery_method,
+    address,
+    scheduled_date: scheduled_date || null,
+    notes
+  };
+
+  if (delivery_method === 'seller_delivery') {
+    body.delivery_person_name = document.getElementById(`dpName-${reqId}`).value.trim();
+    body.delivery_person_phone = document.getElementById(`dpPhone-${reqId}`).value.trim();
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/deliveries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      showNotif(data.message || "Delivery schedule failed", "red");
+      return;
+    }
+
+    showNotif("✅ Delivery scheduled!", "green");
+    setTimeout(() => loadRequests(), 1000);
+
+  } catch (err) {
+    console.log("Schedule delivery error:", err);
+    showNotif("Server error", "red");
+  }
+}
+
+async function updateDeliveryStatus(deliveryId, status) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/deliveries/${deliveryId}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+
+    if (!res.ok) {
+      showNotif("Update failed", "red");
+      return;
+    }
+
+    showNotif(`🚚 Delivery: ${status.replace('_',' ')}`, "green");
+    setTimeout(() => loadRequests(), 1000);
+
+  } catch (err) {
+    console.log("Update delivery status error:", err);
+    showNotif("Server error", "red");
   }
 }
 
