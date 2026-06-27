@@ -31,10 +31,10 @@
 
 <!-- SOCKET.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
 
 <script>
-const API_BASE_URL = 'http://localhost:5000/api';
-
 function getCurrentUser() {
   return JSON.parse(localStorage.getItem("currentUser") || "null");
 }
@@ -58,12 +58,9 @@ if (!requestId) {
 const roomId = `request_${requestId}`;
 document.getElementById("roomInfo").innerText = `Chat with ${otherName}`;
 
-const socket = io("http://localhost:5000");
-
-// Join personal room too, so if a DIFFERENT conversation gets a
-// message while this chat is open, the global toast still works
-socket.emit("register_user", currentUser.id);
-
+// Pass our JWT so the server knows who we really are — this stops
+// anyone from sending messages while pretending to be someone else.
+const socket = io(BACKEND_ORIGIN, { auth: { token: getToken() } });
 
 // JOIN ROOM
 socket.emit("join_room", roomId);
@@ -85,7 +82,7 @@ function renderMessage(msg) {
 /* LOAD OLD MESSAGE HISTORY (REST API) */
 async function loadHistory() {
   try {
-    const res = await fetch(`${API_BASE_URL}/messages/${requestId}`);
+    const res = await authFetch(`${API_BASE_URL}/messages/${requestId}`);
     const data = await res.json();
 
     chatBox.innerHTML = "";
@@ -116,7 +113,6 @@ function sendMessage() {
 
   socket.emit("send_message", {
     request_id: requestId,
-    sender_id: currentUser.id,
     message: text
   });
 

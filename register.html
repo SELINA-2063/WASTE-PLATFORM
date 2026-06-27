@@ -63,7 +63,8 @@
 
         <div class="form-group">
           <label>Password</label>
-          <input id="password" type="password" required />
+          <input id="password" type="password" minlength="6" required />
+          <small style="color:#666;">At least 6 characters</small>
         </div>
 
         <div class="form-group">
@@ -94,6 +95,7 @@
 </div>
 
 <!-- APP JS -->
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <!-- REGISTER SCRIPT -->
@@ -113,7 +115,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
   };
 
   try {
-    const res = await fetch("http://localhost:5000/api/auth/register", {
+    const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -123,11 +125,22 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
 
     if (res.ok) {
       msg.style.color = "green";
-      msg.innerText = "✅ Registration successful! Redirecting to login...";
+      msg.innerText = "✅ Registration successful! Redirecting...";
 
-      setTimeout(() => {
-        window.location.href = "login.html";
-      }, 1500);
+      // Auto-login: the backend already gives us a token + user object,
+      // no need to make the person type their password again.
+      if (result.token && result.user) {
+        setCurrentUser(result.user, result.token);
+        setTimeout(() => {
+          window.location.href = result.user.role === "seller"
+            ? "seller-dashboard.html"
+            : "buyer-dashboard.html";
+        }, 1000);
+      } else {
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 1500);
+      }
 
     } else {
       msg.style.color = "red";

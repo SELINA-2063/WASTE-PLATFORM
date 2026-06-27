@@ -141,12 +141,13 @@
 
 </div>
 
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 
-  const user = JSON.parse(localStorage.getItem("currentUser"));
+  const user = getCurrentUser();
 
   if (!user || user.role !== "admin") {
     window.location.href = "login.html";
@@ -155,11 +156,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadAdminDashboard();
 });
-
-function logout() {
-  localStorage.removeItem("currentUser");
-  window.location.href = "login.html";
-}
 </script>
 
 </body>

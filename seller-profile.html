@@ -91,9 +91,6 @@
 
       </div>
 
-      <!-- BUTTON -->
-      <!---<button class="btn">Edit Profile</button>-->
-
     </div>
 
   </section>
@@ -101,6 +98,7 @@
 </div>
 
 <!-- APP JS -->
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <!-- PROFILE SCRIPT -->
@@ -116,7 +114,7 @@ async function loadProfile() {
 
   try {
     // 🔥 DATABASE থেকে ফ্রেশ SELLER INFO
-    const res = await fetch(`${API_BASE_URL}/seller/profile/${user.id}`);
+    const res = await authFetch(`${API_BASE_URL}/seller/profile/${user.id}`);
     const seller = await res.json();
 
     document.getElementById("p_name").innerText = seller.full_name;
@@ -133,7 +131,7 @@ async function loadProfile() {
 
   try {
     // DASHBOARD STATS (আগের মতই)
-    const statsRes = await fetch(`${API_BASE_URL}/seller/dashboard/${user.id}`);
+    const statsRes = await authFetch(`${API_BASE_URL}/seller/dashboard/${user.id}`);
     const data = await statsRes.json();
 
     document.getElementById("p_posts").innerText = data.totalPosts || 0;

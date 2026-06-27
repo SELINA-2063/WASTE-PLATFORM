@@ -127,6 +127,7 @@
       <table class="waste-table">
         <thead>
           <tr>
+            <th>Photo</th>
             <th>Name</th>
             <th>Type</th>
             <th>Quantity</th>
@@ -137,7 +138,7 @@
         </thead>
         <tbody id="wasteTableBody">
           <tr>
-            <td colspan="6" class="empty-state">Loading...</td>
+            <td colspan="7" class="empty-state">Loading...</td>
           </tr>
         </tbody>
       </table>
@@ -148,6 +149,7 @@
 
 </div>
 
+<script src="config.js"></script>
 <script src="app.js"></script>
 <script>
 
@@ -185,17 +187,22 @@ async function loadWasteListing() {
     const tbody = document.getElementById("wasteTableBody");
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No waste found</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No waste found</td></tr>`;
       return;
     }
 
     tbody.innerHTML = data.map(w => `
       <tr>
-        <td>${w.name}</td>
-        <td>${w.type}</td>
-        <td>${w.quantity}</td>
-        <td>${w.location || '-'}</td>
-        <td>${w.seller_name}</td>
+        <td>
+          ${w.image_url
+            ? `<img src="${BACKEND_ORIGIN}${escapeHTML(w.image_url)}" alt="waste photo" style="width:50px;height:50px;object-fit:cover;border-radius:6px;">`
+            : `<span style="color:#bbb;">-</span>`}
+        </td>
+        <td>${escapeHTML(w.name)}</td>
+        <td>${escapeHTML(w.type)}</td>
+        <td>${escapeHTML(w.quantity)}</td>
+        <td>${escapeHTML(w.location || '-')}</td>
+        <td>${escapeHTML(w.seller_name)}</td>
         <td>
           <button class="btn" onclick="sendRequest(${w.id})">Request</button>
         </td>
@@ -237,7 +244,6 @@ function closeModal() {
 
 /* SUBMIT REQUEST */
 async function submitRequest() {
-  const user = getCurrentUser();
   const quantity = document.getElementById("modalQuantity").value.trim();
   const proposed_price = document.getElementById("modalPrice").value.trim();
   const message = document.getElementById("modalMessage").value.trim();
@@ -253,12 +259,11 @@ async function submitRequest() {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/requests`, {
+    const res = await authFetch(`${API_BASE_URL}/requests`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         waste_id: selectedWasteId,
-        buyer_id: user.id,
         quantity,
         proposed_price,
         message
@@ -271,7 +276,7 @@ async function submitRequest() {
       closeModal();
       showNotif("✅ Request sent successfully!", "green");
     } else {
-      showNotif("❌ " + data.message, "red");
+      showNotif("❌ " + (data.message || "Failed"), "red");
     }
 
   } catch (err) {

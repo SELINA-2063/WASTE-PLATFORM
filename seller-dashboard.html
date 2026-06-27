@@ -105,14 +105,11 @@
 </div>
 
 <!-- APP JS -->
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <!-- 🔥 DASHBOARD SCRIPT -->
 <script>
-
-function getCurrentUser() {
-  return JSON.parse(localStorage.getItem("currentUser") || "null");
-}
 
 document.addEventListener("DOMContentLoaded", () => {
   const user = getCurrentUser();
@@ -139,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 🔥 LOAD STATS
-  fetch(`${API_BASE_URL}/seller/dashboard/${user.id}`)
+  authFetch(`${API_BASE_URL}/seller/dashboard/${user.id}`)
     .then(res => res.json())
     .then(data => {
       document.getElementById("totalPosts").textContent = data.totalPosts || 0;

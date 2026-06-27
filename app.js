@@ -1,6 +1,23 @@
 console.log("APP JS LOADED");
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// API_BASE_URL now comes from config.js (loaded before this file)
+
+/* =========================
+SECURITY HELPER - escape any text before putting it into innerHTML.
+The original code inserted waste names/descriptions/messages straight
+into innerHTML, so a seller could put <script> in a listing title and
+run it in every visitor's browser. Wrap any user-generated text in
+this before using it inside a template string assigned to innerHTML.
+========================= */
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /* =========================
 AUTH HELPERS
@@ -9,13 +26,44 @@ function getCurrentUser() {
   return JSON.parse(localStorage.getItem('currentUser') || 'null');
 }
 
-function setCurrentUser(user) {
+function getToken() {
+  return localStorage.getItem('authToken');
+}
+
+function setCurrentUser(user, token) {
   localStorage.setItem('currentUser', JSON.stringify(user));
+  if (token) {
+    localStorage.setItem('authToken', token);
+  }
 }
 
 function logout() {
   localStorage.removeItem('currentUser');
+  localStorage.removeItem('authToken');
   window.location.href = 'login.html';
+}
+
+/** Merge this into a fetch() options object's headers so the backend
+    knows who is calling. Use it on every request to a protected route. */
+function authHeaders() {
+  const token = getToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+/** Wrapper around fetch() that auto-attaches the auth token and,
+    on a 401 (expired/invalid session), bounces the user back to login
+    instead of leaving them looking at a silently broken page. */
+async function authFetch(url, options = {}) {
+  const opts = {
+    ...options,
+    headers: { ...(options.headers || {}), ...authHeaders() }
+  };
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    logout();
+    throw new Error('Session expired');
+  }
+  return res;
 }
 
 /* =========================
@@ -45,7 +93,7 @@ function initLoginForm() {
         return;
       }
 
-      setCurrentUser(data.user);
+      setCurrentUser(data.user, data.token);
 
       // ROLE REDIRECT
       if (data.user.role === 'admin') {
@@ -69,9 +117,9 @@ ADMIN DASHBOARD
 async function loadAdminDashboard() {
   try {
     const [usersRes, wasteRes, reqRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/admin/users`),
-      fetch(`${API_BASE_URL}/admin/waste`),
-      fetch(`${API_BASE_URL}/requests`)
+      authFetch(`${API_BASE_URL}/admin/users`),
+      authFetch(`${API_BASE_URL}/admin/waste`),
+      authFetch(`${API_BASE_URL}/requests`)
     ]);
 
     const usersData = await usersRes.json();
@@ -94,10 +142,10 @@ async function loadAdminDashboard() {
 
       tbody.innerHTML = list.map(u => `
         <tr>
-          <td>${u.custom_id || u.id}</td>
-          <td>${u.full_name}</td>
-          <td>${u.email}</td>
-          <td>${u.phone || '-'}</td>
+          <td>${escapeHTML(u.custom_id || u.id)}</td>
+          <td>${escapeHTML(u.full_name)}</td>
+          <td>${escapeHTML(u.email)}</td>
+          <td>${escapeHTML(u.phone || '-')}</td>
         </tr>
       `).join('');
     }
@@ -111,11 +159,11 @@ async function loadAdminDashboard() {
     if (wasteTable) {
       wasteTable.innerHTML = waste.map(w => `
         <tr>
-          <td>${w.name}</td>
-          <td>${w.type}</td>
-          <td>${w.quantity}</td>
-          <td>${w.seller_custom_id || w.seller_id}</td>
-          <td><span class="status-badge status-${w.status}">${w.status}</span></td>
+          <td>${escapeHTML(w.name)}</td>
+          <td>${escapeHTML(w.type)}</td>
+          <td>${escapeHTML(w.quantity)}</td>
+          <td>${escapeHTML(w.seller_custom_id || w.seller_id)}</td>
+          <td><span class="status-badge status-${escapeHTML(w.status)}">${escapeHTML(w.status)}</span></td>
           <td>
             ${w.status !== 'approved' ? `<button class="btn-approve" onclick="updateWasteStatus(${w.id}, 'approved')">✅ Approve</button>` : ''}
             ${w.status !== 'rejected' ? `<button class="btn-reject" onclick="updateWasteStatus(${w.id}, 'rejected')">❌ Reject</button>` : ''}
@@ -134,7 +182,7 @@ ADMIN - APPROVE / REJECT WASTE POST
 ========================= */
 async function updateWasteStatus(id, status) {
   try {
-    const res = await fetch(`${API_BASE_URL}/admin/waste/${id}/status`, {
+    const res = await authFetch(`${API_BASE_URL}/admin/waste/${id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
@@ -161,7 +209,7 @@ async function loadSellerDashboard() {
   if (!user) return;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/seller/dashboard/${user.id}`);
+    const res = await authFetch(`${API_BASE_URL}/seller/dashboard/${user.id}`);
     const data = await res.json();
 
     document.getElementById("totalPosts").innerText = data.totalPosts || 0;
@@ -178,7 +226,8 @@ GLOBAL REAL-TIME NOTIFICATIONS
 ========================= */
 function initGlobalNotifications() {
   const user = getCurrentUser();
-  if (!user) return; // not logged in, skip
+  const token = getToken();
+  if (!user || !token) return; // not logged in, skip
 
   // Dynamically load the socket.io client library (so we don't need
   // to add a <script> tag to every single HTML page)
@@ -186,11 +235,12 @@ function initGlobalNotifications() {
   script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
 
   script.onload = () => {
-    const socket = io('http://localhost:5000');
+    // Pass the JWT so the server can verify who we really are —
+    // this stops anyone from registering as a different user's id
+    // straight from the browser console.
+    const socket = io(BACKEND_ORIGIN, { auth: { token } });
 
-    // Join our personal notification room
-    socket.emit('register_user', user.id);
-socket.on('new_message_notification', (data) => {
+    socket.on('new_message_notification', (data) => {
       showToast(data);
     });
 
@@ -201,7 +251,7 @@ socket.on('new_message_notification', (data) => {
       if (typeof loadRequests === 'function') loadRequests();
       if (typeof loadMyRequests === 'function') loadMyRequests(user.id);
     });
-    
+
   };
 
   document.head.appendChild(script);
@@ -220,8 +270,8 @@ function showDeliveryToast(data) {
   toast.className = 'global-toast';
 
   toast.innerHTML = `
-    <strong>${labels[data.status] || 'Delivery update'}</strong>
-    <p>${data.waste_name || 'Your request'}</p>
+    <strong>${escapeHTML(labels[data.status] || 'Delivery update')}</strong>
+    <p>${escapeHTML(data.waste_name || 'Your request')}</p>
   `;
 
   document.body.appendChild(toast);
@@ -237,14 +287,16 @@ function showToast(data) {
   const toast = document.createElement('div');
   toast.className = 'global-toast';
 
+  // data.message/sender_name/waste_name come from another user (chat),
+  // so they MUST be escaped before going into innerHTML.
   toast.innerHTML = `
-    <strong>💬 ${data.sender_name}</strong>
-    <p>${data.message}</p>
-    <span class="toast-sub">re: ${data.waste_name || 'your request'}</span>
+    <strong>💬 ${escapeHTML(data.sender_name)}</strong>
+    <p>${escapeHTML(data.message)}</p>
+    <span class="toast-sub">re: ${escapeHTML(data.waste_name || 'your request')}</span>
   `;
 
   toast.onclick = () => {
-    window.location.href = `chat.html?request_id=${data.request_id}&otherName=${encodeURIComponent(data.sender_name)}`;
+    window.location.href = `chat.html?request_id=${encodeURIComponent(data.request_id)}&otherName=${encodeURIComponent(data.sender_name)}`;
   };
 
   document.body.appendChild(toast);

@@ -44,9 +44,10 @@
 
         <thead>
           <tr>
+            <th>Photo</th>
             <th>Name</th>
             <th>Type</th>
-            <th>Quantity</th>
+            <th>Quantity (Kg)</th>
             <th>Location</th>
             <th>Description</th>
             <th>Status</th>
@@ -55,7 +56,7 @@
 
         <tbody id="sellerPostsBody">
           <tr>
-            <td colspan="6" style="text-align:center;color:gray;padding:20px;">
+            <td colspan="7" style="text-align:center;color:gray;padding:20px;">
               Loading posts...
             </td>
           </tr>
@@ -70,15 +71,12 @@
 </div>
 
 <!-- APP JS -->
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <!-- MY POSTS SCRIPT -->
 <script>
 console.log("MY POSTS PAGE LOADED");
-
-function getCurrentUser() {
-  return JSON.parse(localStorage.getItem("currentUser") || "null");
-}
 
 async function loadMyPosts() {
   const user = getCurrentUser();
@@ -88,7 +86,7 @@ async function loadMyPosts() {
   }
 
   try {
-    const res = await fetch(`http://localhost:5000/api/waste/my/${user.id}`);
+    const res = await authFetch(`${API_BASE_URL}/waste/my/${user.id}`);
     const data = await res.json();
 
     const tbody = document.getElementById("sellerPostsBody");
@@ -96,7 +94,7 @@ async function loadMyPosts() {
     if (!data || data.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align:center;color:gray;">
+          <td colspan="7" style="text-align:center;color:gray;">
             No posts found
           </td>
         </tr>
@@ -106,12 +104,17 @@ async function loadMyPosts() {
 
     tbody.innerHTML = data.map(post => `
       <tr>
-        <td>${post.name}</td>
-        <td>${post.type}</td>
-        <td>${post.quantity}</td>
-        <td>${post.location || '-'}</td>
-        <td>${post.description || '-'}</td>
-        <td><span class="status-badge status-${post.status}">${post.status}</span></td>
+        <td>
+          ${post.image_url
+            ? `<img src="${BACKEND_ORIGIN}${escapeHTML(post.image_url)}" alt="waste photo" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">`
+            : `<span style="color:#bbb;">No photo</span>`}
+        </td>
+        <td>${escapeHTML(post.name)}</td>
+        <td>${escapeHTML(post.type)}</td>
+        <td>${escapeHTML(post.quantity)}</td>
+        <td>${escapeHTML(post.location || '-')}</td>
+        <td>${escapeHTML(post.description || '-')}</td>
+        <td><span class="status-badge status-${escapeHTML(post.status)}">${escapeHTML(post.status)}</span></td>
       </tr>
     `).join('');
 

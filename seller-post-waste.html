@@ -23,7 +23,7 @@
       <a href="seller-dashboard.html">Dashboard</a>
       <a class="active" href="seller-post-waste.html">Post Waste</a>
       <a href="seller-my-posts.html">My Posts</a>
-      <a href="login.html">Logout</a>
+      <a href="#" onclick="logout()">Logout</a>
     </nav>
   </header>
 
@@ -66,6 +66,15 @@
           <textarea id="postDescription" rows="4" placeholder="Write short details..."></textarea>
         </div>
 
+        <div class="form-group">
+          <label>Photo (optional)</label>
+          <input id="postImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" />
+          <small style="color:#666;">A real photo helps buyers trust your listing. Max 5MB.</small>
+          <div id="imagePreviewWrap" style="display:none; margin-top:10px;">
+            <img id="imagePreview" alt="Preview" style="max-width:200px; max-height:200px; border-radius:8px; border:1px solid #ccc;" />
+          </div>
+        </div>
+
         <button type="submit" class="btn">🚀 Post Waste</button>
 
       </form>
@@ -85,10 +94,11 @@
 </div>
 
 <!-- JS -->
+<script src="config.js"></script>
 <script src="app.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  const user = JSON.parse(localStorage.getItem("currentUser"));
+  const user = getCurrentUser();
 
   if (!user || user.role !== "seller") {
     window.location.href = "login.html";
@@ -96,12 +106,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+/* Live preview of the chosen photo before upload */
+document.getElementById("postImage").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  const wrap = document.getElementById("imagePreviewWrap");
+  const img = document.getElementById("imagePreview");
+
+  if (!file) {
+    wrap.style.display = "none";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    img.src = ev.target.result;
+    wrap.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+});
+
 document.getElementById("sellerPostForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const msg = document.getElementById("msg");
 
-  const user = JSON.parse(localStorage.getItem("currentUser"));
+  const user = getCurrentUser();
 
   if (!user) {
     msg.style.color = "red";
@@ -109,20 +138,25 @@ document.getElementById("sellerPostForm").addEventListener("submit", async (e) =
     return;
   }
 
-  const data = {
-    name: document.getElementById("postName").value,
-    type: document.getElementById("postType").value,
-    quantity: Number(document.getElementById("postQuantity").value),
-    location: document.getElementById("postLocation").value,
-    description: document.getElementById("postDescription").value,
-    seller_id: user.id
-  };
+  // multipart/form-data so the image file can travel with the rest of the fields
+  const formData = new FormData();
+  formData.append("name", document.getElementById("postName").value);
+  formData.append("type", document.getElementById("postType").value);
+  formData.append("quantity", document.getElementById("postQuantity").value);
+  formData.append("location", document.getElementById("postLocation").value);
+  formData.append("description", document.getElementById("postDescription").value);
+
+  const imageFile = document.getElementById("postImage").files[0];
+  if (imageFile) {
+    formData.append("image", imageFile);
+  }
 
   try {
-    const res = await fetch("http://localhost:5000/api/waste/post", {
+    // NOTE: don't set Content-Type manually for FormData —
+    // the browser needs to add its own multipart boundary.
+    const res = await authFetch(`${API_BASE_URL}/waste/post`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
+      body: formData
     });
 
     const text = await res.text();

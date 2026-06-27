@@ -61,6 +61,7 @@
 
         <thead>
           <tr>
+            <th>Photo</th>
             <th>Name</th>
             <th>Type</th>
             <th>Quantity</th>
@@ -72,7 +73,7 @@
 
         <tbody id="searchTableBody">
           <tr>
-            <td colspan="6" class="empty-state">
+            <td colspan="7" class="empty-state">
               Search to see results
             </td>
           </tr>
@@ -86,7 +87,7 @@
 
 </div>
 
-<script src="app.js"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <script>
@@ -128,17 +129,22 @@ async function searchWaste() {
     const tbody = document.getElementById("searchTableBody");
 
     if (!data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No waste found</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No waste found</td></tr>`;
       return;
     }
 
     tbody.innerHTML = data.map(w => `
       <tr>
-        <td>${w.name}</td>
-        <td>${w.type}</td>
-        <td>${w.quantity}</td>
-        <td>${w.location || '-'}</td>
-        <td>${w.seller_name}</td>
+        <td>
+          ${w.image_url
+            ? `<img src="${BACKEND_ORIGIN}${escapeHTML(w.image_url)}" alt="waste photo" style="width:50px;height:50px;object-fit:cover;border-radius:6px;">`
+            : `<span style="color:#bbb;">-</span>`}
+        </td>
+        <td>${escapeHTML(w.name)}</td>
+        <td>${escapeHTML(w.type)}</td>
+        <td>${escapeHTML(w.quantity)}</td>
+        <td>${escapeHTML(w.location || '-')}</td>
+        <td>${escapeHTML(w.seller_name)}</td>
         <td>
           <button class="btn" onclick="sendRequest(${w.id})">Request</button>
         </td>
@@ -163,16 +169,19 @@ async function sendRequest(wasteId) {
   const quantity = prompt("Enter quantity : ");
   if (!quantity) return;
 
+  const proposed_price = prompt("Enter your proposed price (per unit) ৳ : ");
+  if (!proposed_price) return;
+
   const message = prompt("Any message for seller ? (optional)") || "";
 
   try {
-    const res = await fetch(`${API_BASE_URL}/requests`, {
+    const res = await authFetch(`${API_BASE_URL}/requests`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         waste_id: wasteId,
-        buyer_id: user.id,
         quantity,
+        proposed_price,
         message
       })
     });

@@ -74,16 +74,7 @@
           <a href="my-request.html" class="btn">View</a>
         </div>
 
-        <!-- QUICK MATCH (FIXED) 
-        <div class="dash-card premium">
-          <div class="icon">⚡</div>
-          <h3>Quick Match</h3>
-          <p>Get best waste offers automatically</p>
-          <a href="quick-match.html" class="btn">Try</a>
-        </div>
-        -->
-
-        <!-- PROFILE (FIXED) -->
+        <!-- PROFILE -->
         <div class="dash-card premium">
           <div class="icon">👤</div>
           <h3>Profile</h3>
@@ -105,6 +96,7 @@
 </div>
 
 <!-- APP JS -->
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <!-- 🔥 DASHBOARD SCRIPT -->
@@ -128,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("buyerName").textContent = user.full_name;
 
   // LOAD STATS
-  fetch(`${API_BASE_URL}/buyer/dashboard/${user.id}`)
+  authFetch(`${API_BASE_URL}/buyer/dashboard/${user.id}`)
     .then(res => res.json())
     .then(data => {
       document.getElementById("totalRequests").textContent = data.totalRequests || 0;

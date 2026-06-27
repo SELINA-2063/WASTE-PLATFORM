@@ -38,6 +38,7 @@
   </section>
 </div>
 
+<script src="config.js"></script>
 <script src="app.js"></script>
 <script>
 
@@ -59,7 +60,7 @@ async function loadRequests() {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/requests/${user.id}`);
+    const res = await authFetch(`${API_BASE_URL}/requests/${user.id}`);
     const data = await res.json();
     const container = document.getElementById("requestContainer");
 
@@ -72,14 +73,14 @@ async function loadRequests() {
       <div class="request-card">
         <div class="request-header">
           <h2>📨 Buyer Request</h2>
-          <span class="status ${req.status}">
-            ${req.status || 'pending'}
+          <span class="status ${escapeHTML(req.status)}">
+            ${escapeHTML(req.status || 'pending')}
           </span>
         </div>
         <div class="request-body">
-          <div class="info-row"><b>Buyer:</b> ${req.buyer_name}</div>
-          <div class="info-row"><b>Waste:</b> ${req.waste_name} (${req.waste_type})</div>
-          <div class="info-row"><b>Quantity:</b> ${req.quantity}</div>
+          <div class="info-row"><b>Buyer:</b> ${escapeHTML(req.buyer_name)}</div>
+          <div class="info-row"><b>Waste:</b> ${escapeHTML(req.waste_name)} (${escapeHTML(req.waste_type)})</div>
+          <div class="info-row"><b>Quantity:</b> ${escapeHTML(req.quantity)}</div>
           <div class="info-row" style="
             background:#e8f5e9;
             padding:10px 14px;
@@ -99,7 +100,7 @@ async function loadRequests() {
           </div>
           <div class="message-box">
             <b>Message:</b>
-            <p>${req.message || 'No message'}</p>
+            <p>${escapeHTML(req.message || 'No message')}</p>
           </div>
 
           ${renderDeliverySection(req)}
@@ -149,8 +150,8 @@ function renderDeliverySection(req) {
           </select>
 
           <label>Address</label>
-          <input type="text" id="address-${req.id}" placeholder="${req.pickup_location || ''}"
-                 value="${req.pickup_location || ''}" />
+          <input type="text" id="address-${req.id}" placeholder="${escapeHTML(req.pickup_location || '')}"
+                 value="${escapeHTML(req.pickup_location || '')}" />
 
           <label>Scheduled Date</label>
           <input type="date" id="date-${req.id}" />
@@ -190,14 +191,14 @@ function renderDeliverySection(req) {
   return `
     <div class="delivery-box">
       <b>🚚 Delivery Info</b>
-      <span class="status ${req.delivery_status}">${(req.delivery_status || '').replace('_',' ')}</span>
+      <span class="status ${escapeHTML(req.delivery_status)}">${escapeHTML((req.delivery_status || '').replace('_',' '))}</span>
       <div class="info-row"><b>Method:</b> ${methodLabel}</div>
-      <div class="info-row"><b>Address:</b> ${req.delivery_address || '-'}</div>
+      <div class="info-row"><b>Address:</b> ${escapeHTML(req.delivery_address || '-')}</div>
       <div class="info-row"><b>Scheduled Date:</b> ${req.scheduled_date ? new Date(req.scheduled_date).toLocaleDateString() : '-'}</div>
       ${req.delivery_method === 'seller_delivery' ? `
-        <div class="info-row"><b>Delivery Person:</b> ${req.delivery_person_name || '-'} (${req.delivery_person_phone || '-'})</div>
+        <div class="info-row"><b>Delivery Person:</b> ${escapeHTML(req.delivery_person_name || '-')} (${escapeHTML(req.delivery_person_phone || '-')})</div>
       ` : ''}
-      ${req.delivery_notes ? `<div class="info-row"><b>Notes:</b> ${req.delivery_notes}</div>` : ''}
+      ${req.delivery_notes ? `<div class="info-row"><b>Notes:</b> ${escapeHTML(req.delivery_notes)}</div>` : ''}
       <div class="action-buttons">${actions}</div>
     </div>
   `;
@@ -239,7 +240,7 @@ async function scheduleDelivery(reqId) {
   }
 
   try {
-    const res = await fetch(`${API_BASE_URL}/deliveries`, {
+    const res = await authFetch(`${API_BASE_URL}/deliveries`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
@@ -263,7 +264,7 @@ async function scheduleDelivery(reqId) {
 
 async function updateDeliveryStatus(deliveryId, status) {
   try {
-    const res = await fetch(`${API_BASE_URL}/deliveries/${deliveryId}/status`, {
+    const res = await authFetch(`${API_BASE_URL}/deliveries/${deliveryId}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status })
@@ -286,11 +287,17 @@ async function updateDeliveryStatus(deliveryId, status) {
 /* UPDATE STATUS */
 async function updateRequest(id, status) {
   try {
-    const res = await fetch(`${API_BASE_URL}/requests/${id}`, {
+    const res = await authFetch(`${API_BASE_URL}/requests/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status })
     });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showNotif(data.message || "Update failed", "red");
+      return;
+    }
 
     if (status === 'accepted') {
       showNotif("✅ Request accepted!", "green");

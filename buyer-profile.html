@@ -20,7 +20,7 @@
     <nav class="nav">
       <a href="buyer-dashboard.html">Dashboard</a>
       <a href="search.html">Search Waste</a>
-      <a href="my-requests.html">My Requests</a>
+      <a href="my-request.html">My Requests</a>
       <a href="#" onclick="logout()">Logout</a>
     </nav>
   </header>
@@ -52,10 +52,6 @@
         </div>
       </div>
 
-      <!--<button class="btn" onclick="alert('Edit feature coming soon')">
-        Edit Profile
-      </button>-->
-
       <br><br>
 
       <a href="buyer-dashboard.html" class="btn">Back</a>
@@ -67,6 +63,7 @@
 </div>
 
 <!-- APP JS -->
+<script src="config.js"></script>
 <script src="app.js"></script>
 
 <!-- PROFILE SCRIPT -->
@@ -90,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadProfile(id) {
   try {
-    const res = await fetch(`${API_BASE_URL}/buyer/profile/${id}`);
+    const res = await authFetch(`${API_BASE_URL}/buyer/profile/${id}`);
     const buyer = await res.json();
 
     document.getElementById("p_name").innerText = buyer.full_name;
@@ -104,7 +101,7 @@ async function loadProfile(id) {
   }
 
   try {
-    const statsRes = await fetch(`${API_BASE_URL}/buyer/dashboard/${id}`);
+    const statsRes = await authFetch(`${API_BASE_URL}/buyer/dashboard/${id}`);
     const data = await statsRes.json();
 
     document.getElementById("p_requests").innerText = data.totalRequests || 0;

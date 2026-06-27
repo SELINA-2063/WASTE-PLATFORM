@@ -58,6 +58,22 @@
 
   </section>
 
+  <!-- FEATURED WASTE -->
+  <section class="hero">
+    <div class="waste-card">
+      <div class="waste-header">
+        <h2>🌿 Recently Listed Waste</h2>
+        <p>A few items currently available on the platform</p>
+      </div>
+      <div id="featuredWasteGrid" style="display:flex; gap:16px; flex-wrap:wrap; justify-content:center; padding:10px 0;">
+        <p style="color:gray;">Loading...</p>
+      </div>
+      <div style="text-align:center; margin-top:10px;">
+        <a href="waste-listing.html" class="btn">See All Listings</a>
+      </div>
+    </div>
+  </section>
+
   <!-- FOOTER -->
   <footer class="footer">
     2026 Waste to Resource. All rights reserved.
@@ -65,8 +81,63 @@
 
 </div>
 
+<script src="config.js"></script>
+<script src="app.js"></script>
 <script>
-  loadWaste();
+
+/* Adapt the nav bar depending on whether someone is already logged in */
+document.addEventListener("DOMContentLoaded", () => {
+  const user = getCurrentUser();
+  const nav = document.querySelector(".nav");
+
+  if (user && nav) {
+    const dashboardPage = user.role === 'admin'
+      ? 'admin-dashboard.html'
+      : user.role === 'seller'
+        ? 'seller-dashboard.html'
+        : 'buyer-dashboard.html';
+
+    nav.innerHTML = `
+      <a class="active" href="index.html">Home</a>
+      <a href="waste-listing.html">Waste Listing</a>
+      <a href="${dashboardPage}">My Dashboard</a>
+      <a href="#" onclick="logout()">Logout</a>
+    `;
+  }
+
+  loadFeaturedWaste();
+});
+
+/* Show a handful of approved listings right on the homepage */
+async function loadFeaturedWaste() {
+  const grid = document.getElementById("featuredWasteGrid");
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/waste/search`);
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      grid.innerHTML = `<p style="color:gray;">No listings yet — be the first to post one!</p>`;
+      return;
+    }
+
+    grid.innerHTML = data.slice(0, 3).map(w => `
+      <div style="width:220px; border:1px solid #e0e0e0; border-radius:10px; overflow:hidden; text-align:left; background:#fff;">
+        ${w.image_url
+          ? `<img src="${BACKEND_ORIGIN}${escapeHTML(w.image_url)}" alt="waste photo" style="width:100%; height:130px; object-fit:cover;">`
+          : `<div style="width:100%; height:130px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; color:#bbb;">No photo</div>`}
+        <div style="padding:10px;">
+          <strong>${escapeHTML(w.name)}</strong>
+          <p style="margin:4px 0; color:#666; font-size:14px;">${escapeHTML(w.type)} • ${escapeHTML(w.location || '-')}</p>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.log("Featured waste error:", err);
+    grid.innerHTML = `<p style="color:gray;">Could not load listings right now.</p>`;
+  }
+}
 </script>
 
 </body>
